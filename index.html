@@ -1730,140 +1730,304 @@ function exportToExcel() {
   const q = collectQuoteData();
   const totals = recalc();
 
-  // 統一構造：Aラベル / B値 ベース（サービス明細だけ多列）
-  // 列構成：A=ラベル/#, B=値/サービス名, C=内容, D=備考, E=数量, F=初期費用, G=月額, H=年額, I=値引き, J=小計
-  // 集計欄は I=ラベル, J=値 で右寄せ
-  const NCOL = 10;
-  const blank = () => Array(NCOL).fill('');
-  const row1 = (label, val) => { const r = blank(); r[0] = label; r[1] = val != null ? val : ''; return r; };
-
+  // 8列構造 A〜H
+  const NCOL = 8;
   const data = [];
+  const merges = [];
+  const rowHeights = {};
+  let r = 0;
 
-  // === ヘッダー ===
-  const titleRow = blank(); titleRow[0] = '見積書 兼 申込書';
-  data.push(titleRow);
-  data.push(blank());
+  function blank() { return Array(NCOL).fill(''); }
+  function push(row, h) {
+    data.push(row);
+    if (h != null) rowHeights[r] = { hpt: h };
+    r++;
+  }
+  function pushBlank(h) { push(blank(), h); }
+  function mr(r1, c1, r2, c2) {
+    merges.push({ s: { r: r1, c: c1 }, e: { r: r2, c: c2 } });
+  }
+  function jpDate(s) {
+    if (!s) return '';
+    const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);
+    return m ? `${m[1]}年${parseInt(m[2])}月${parseInt(m[3])}日` : s;
+  }
+  function money(n) {
+    if (n == null || n === '' || isNaN(n) || Number(n) === 0) return '';
+    return { t: 'n', v: Number(n), z: '"¥"#,##0' };
+  }
+  function moneyForce(n) {
+    return { t: 'n', v: Number(n || 0), z: '"¥"#,##0' };
+  }
 
-  const custRow = blank();
-  custRow[0] = (q.customerCompany || '') + ' 御中';
-  custRow[8] = '発行日';
-  custRow[9] = q.issueDate || '';
-  data.push(custRow);
+  // === タイトル ===
+  const t0 = blank(); t0[0] = '見　積　書　兼　申　込　書';
+  push(t0, 30);
+  mr(r-1, 0, r-1, NCOL-1);
+  pushBlank();
 
-  const validRow = blank();
-  validRow[8] = '有効期限';
-  validRow[9] = q.validUntil || '';
-  data.push(validRow);
-  data.push(blank());
+  // === 顧客御中（左）＋ 発行日・有効期限（右）===
+  const cu = blank();
+  cu[0] = (q.customerCompany || '') + ' 御中';
+  cu[5] = '発行日：' + jpDate(q.issueDate);
+  push(cu, 22);
+  mr(r-1, 0, r-1, 4);
+  mr(r-1, 5, r-1, 7);
 
-  // === 発行元 ===
-  data.push(row1('■ 発行元', ''));
-  data.push(row1('会社名', COMPANY_INFO.name));
-  data.push(row1('所在地', COMPANY_INFO.postalCode + ' ' + COMPANY_INFO.address));
-  if (q.agencyName)  data.push(row1('代理店', q.agencyName));
-  if (q.salesPerson) data.push(row1('担当', q.salesPerson));
-  data.push(blank());
+  const vd = blank();
+  vd[0] = '下記の通り、御見積申し上げます。';
+  vd[5] = '有効期限：' + jpDate(q.validUntil);
+  push(vd);
+  mr(r-1, 0, r-1, 4);
+  mr(r-1, 5, r-1, 7);
+  pushBlank();
+
+  // === 発行元（右寄せ）===
+  function pushVendorLine(text, h) {
+    const v = blank(); v[5] = text;
+    push(v, h);
+    mr(r-1, 5, r-1, 7);
+  }
+  pushVendorLine(COMPANY_INFO.name, 20);
+  pushVendorLine(COMPANY_INFO.postalCode);
+  pushVendorLine(COMPANY_INFO.address);
+  if (q.agencyName)  pushVendorLine('代理店：' + q.agencyName);
+  if (q.salesPerson) pushVendorLine('担当：' + q.salesPerson);
+  pushBlank();
 
   // === 施策対象 ===
-  data.push(row1('■ 施策対象', ''));
-  data.push(row1('名称', q.targetName));
-  data.push(row1('住所', q.targetAddress));
-  if (q.targetWebsite)   data.push(row1('HP URL', q.targetWebsite));
-  if (q.targetGoogleMap) data.push(row1('Google マップ URL', q.targetGoogleMap));
-  if (q.targetFacebook)  data.push(row1('Facebook', q.targetFacebook));
-  if (q.targetInstagram) data.push(row1('Instagram', q.targetInstagram));
-  data.push(blank());
+  const sh1 = blank(); sh1[0] = '■ 施策対象';
+  push(sh1, 22);
+  mr(r-1, 0, r-1, NCOL-1);
+
+  const targetRows = [
+    ['名称（店舗名または会社名）', q.targetName],
+    ['住所', q.targetAddress],
+  ];
+  if (q.targetWebsite)   targetRows.push(['HP URL', q.targetWebsite]);
+  if (q.targetGoogleMap) targetRows.push(['Google マップ URL', q.targetGoogleMap]);
+  if (q.targetFacebook)  targetRows.push(['Facebook', q.targetFacebook]);
+  if (q.targetInstagram) targetRows.push(['Instagram', q.targetInstagram]);
+
+  const targetStart = r;
+  targetRows.forEach((tr, i) => {
+    const row = blank();
+    if (i === 0) row[0] = '施策対象';
+    row[1] = tr[0];
+    row[2] = tr[1] || '';
+    push(row);
+    mr(r-1, 2, r-1, 7);
+  });
+  mr(targetStart, 0, r-1, 0);
+  pushBlank();
 
   // === 契約者情報 ===
-  data.push(row1('■ 契約者情報', ''));
-  data.push(row1('企業名', q.customerCompany));
-  data.push(row1('所在地', q.customerAddress));
-  data.push(row1('役職', q.customerTitle));
-  data.push(row1('代表者氏名', q.customerName));
-  data.push(blank());
+  const sh2 = blank(); sh2[0] = '■ 契約者情報';
+  push(sh2, 22);
+  mr(r-1, 0, r-1, NCOL-1);
+
+  const ciStart = r;
+  let row = blank();
+  row[0] = '契約者情報';
+  row[1] = '企業名';
+  row[2] = q.customerCompany || '';
+  push(row);
+  mr(r-1, 2, r-1, 7);
+
+  row = blank();
+  row[1] = '所在地';
+  row[2] = q.customerAddress || '';
+  push(row);
+  mr(r-1, 2, r-1, 7);
+
+  row = blank();
+  row[1] = '代表者';
+  row[2] = '役職';
+  row[3] = q.customerTitle || '';
+  row[5] = '氏名';
+  row[6] = q.customerName || '';
+  push(row);
+  mr(r-1, 3, r-1, 4);
+  mr(r-1, 6, r-1, 7);
+  mr(ciStart, 0, r-1, 0);
+  pushBlank();
 
   // === 契約条件 ===
-  data.push(row1('■ 契約条件', ''));
-  data.push(row1('契約形式', q.signFormat));
-  data.push(row1('契約開始日', q.contractStartDate));
-  data.push(row1('契約終了日', q.contractEndDate));
-  data.push(row1('契約期間', q.contractMonths ? q.contractMonths + 'ヶ月' : ''));
-  data.push(row1('支払回数', q.paymentCount != null ? q.paymentCount + '回' : ''));
-  data.push(row1('初回支払期日', q.firstPaymentDue));
-  data.push(row1('2回目以降', q.recurringPaymentTerm));
-  data.push(blank());
+  const sh3 = blank(); sh3[0] = '■ 契約条件';
+  push(sh3, 22);
+  mr(r-1, 0, r-1, NCOL-1);
+
+  // 契約形式（全幅）
+  row = blank();
+  row[0] = '契約形式';
+  row[1] = q.signFormat || '';
+  push(row);
+  mr(r-1, 1, r-1, 7);
+
+  // 開始日 / 期間
+  row = blank();
+  row[0] = '契約開始日';
+  row[1] = jpDate(q.contractStartDate);
+  row[4] = '契約期間';
+  row[5] = q.contractMonths ? q.contractMonths + ' ヶ月' : '';
+  push(row);
+  mr(r-1, 1, r-1, 3);
+  mr(r-1, 5, r-1, 7);
+
+  // 終了日 / 支払回数
+  row = blank();
+  row[0] = '契約終了日';
+  row[1] = jpDate(q.contractEndDate);
+  row[4] = '支払回数';
+  row[5] = q.paymentCount != null ? q.paymentCount + ' 回' : '';
+  push(row);
+  mr(r-1, 1, r-1, 3);
+  mr(r-1, 5, r-1, 7);
+
+  // 初回支払期日 / 2回目以降
+  row = blank();
+  row[0] = '初回支払期日';
+  row[1] = jpDate(q.firstPaymentDue);
+  row[4] = '2回目以降';
+  row[5] = q.recurringPaymentTerm || '';
+  push(row);
+  mr(r-1, 1, r-1, 3);
+  mr(r-1, 5, r-1, 7);
+  pushBlank();
 
   // === サービス明細 ===
-  data.push(row1('■ サービス明細', ''));
-  data.push(['#', 'サービス名', '内容', '備考', '数量', '初期費用', '月額', '年額', '値引き', '小計']);
-  q.items.forEach((it, idx) => {
-    data.push([
-      idx + 1,
-      it.productName || '',
-      it.content || '',
-      it.note || '',
-      it.quantity != null ? it.quantity : 1,
-      it.initialFee || '',
-      it.monthlyFee || '',
-      it.yearlyFee  || '',
-      it.discount   || '',
-      calcSubtotal(it),
-    ]);
-  });
-  data.push(blank());
+  const sh4 = blank(); sh4[0] = '■ サービス明細';
+  push(sh4, 22);
+  mr(r-1, 0, r-1, NCOL-1);
 
-  // === 集計 ===
-  const totRow = (label, val) => {
-    const r = blank();
-    r[8] = label;
-    r[9] = val;
-    return r;
-  };
-  data.push(totRow('初期費用合計', totals.initialTotal));
-  data.push(totRow('月額合計',     totals.monthlyTotal));
-  data.push(totRow(`月額 × ${totals.months}ヶ月`, totals.monthlySum));
-  data.push(totRow('年額合計',     totals.yearlyTotal));
-  if (totals.totalDiscount) data.push(totRow('全体値引き', -totals.totalDiscount));
-  data.push(totRow('合計（税別）', totals.grandTotal));
-  data.push(totRow('初回支払額',   totals.firstPayment));
-  data.push(totRow('2回目以降月額', totals.recurring));
-  data.push(blank());
+  push(['#', 'サービス名 / 内容', '数量', '初期費用', '月額', '年額', '値引き', '小計'], 22);
+
+  q.items.forEach((it, idx) => {
+    const nameBlock = (it.productName || '')
+      + (it.content ? '\n' + it.content : '')
+      + (it.note ? '\n※ ' + it.note : '');
+    const lines = nameBlock.split('\n').length;
+    const itemRow = [
+      idx + 1,
+      nameBlock,
+      it.quantity != null ? it.quantity : 1,
+      money(it.initialFee),
+      money(it.monthlyFee),
+      money(it.yearlyFee),
+      it.discount ? money(-it.discount) : '',
+      moneyForce(calcSubtotal(it)),
+    ];
+    push(itemRow, Math.max(40, 18 * lines));
+  });
+  if (!q.items.length) {
+    const empty = blank();
+    empty[1] = '（サービスが選択されていません）';
+    push(empty);
+    mr(r-1, 1, r-1, 7);
+  }
+  pushBlank();
+
+  // === 集計（右寄せ）===
+  function pushTotal(label, val, isBig) {
+    const row = blank();
+    row[6] = label;
+    row[7] = moneyForce(val);
+    push(row, isBig ? 24 : null);
+    mr(r-1, 0, r-1, 5);
+  }
+  pushTotal('初期費用合計', totals.initialTotal);
+  pushTotal('月額合計', totals.monthlyTotal);
+  pushTotal('月額 × ' + totals.months + 'ヶ月', totals.monthlySum);
+  pushTotal('年額合計', totals.yearlyTotal);
+  if (totals.totalDiscount) pushTotal('全体値引き', -totals.totalDiscount);
+  pushTotal('合計（税別）', totals.grandTotal, true);
+  pushTotal('初回支払額', totals.firstPayment);
+  pushTotal('2回目以降月額', totals.recurring);
+  pushBlank();
 
   // === 備考 ===
   if (q.remarks) {
-    data.push(row1('■ 備考', ''));
-    q.remarks.split('\n').forEach(line => data.push(row1('', line)));
-    data.push(blank());
+    const sh = blank(); sh[0] = '■ 備考';
+    push(sh, 22);
+    mr(r-1, 0, r-1, NCOL-1);
+    q.remarks.split('\n').forEach(line => {
+      const lr = blank(); lr[0] = line;
+      push(lr);
+      mr(r-1, 0, r-1, NCOL-1);
+    });
+    pushBlank();
   }
 
+  // === 申込・押印欄 ===
+  const sh5 = blank(); sh5[0] = '■ 申込・押印欄';
+  push(sh5, 22);
+  mr(r-1, 0, r-1, NCOL-1);
+
+  const nt = blank();
+  nt[0] = '本見積書の内容に同意のうえ、お申込みいただける場合は下記にご署名・ご捺印ください。';
+  push(nt);
+  mr(r-1, 0, r-1, NCOL-1);
+  pushBlank();
+
+  // 押印枠（右寄せ・E列以降）
+  let sg = blank();
+  sg[4] = '発注者（お客様）';
+  sg[7] = '［印］';
+  push(sg, 22);
+  mr(r-1, 4, r-1, 6);
+
+  sg = blank(); sg[4] = '会社'; sg[5] = q.customerCompany || '';
+  push(sg);
+  mr(r-1, 5, r-1, 7);
+
+  sg = blank(); sg[4] = '所在地'; sg[5] = q.customerAddress || '';
+  push(sg);
+  mr(r-1, 5, r-1, 7);
+
+  sg = blank(); sg[4] = '代表'; sg[5] = (q.customerTitle || '') + ' ' + (q.customerName || '');
+  push(sg);
+  mr(r-1, 5, r-1, 7);
+  pushBlank();
+
   // === フッター注記 ===
-  data.push(row1('', '※ 価格は全て税別表記です。'));
-  data.push(row1('', '※ 本見積書は契約後、双方の合意の上、申込書として効力を持ちます。'));
-  data.push(row1('', '※ 利用規約：' + COMPANY_INFO.kiyakuUrl));
+  const notes = [
+    '※ 価格は全て税別表記です。',
+    '※ 本見積書は契約後、双方の合意の上、申込書として効力を持ちます。',
+    '※ 利用規約：' + COMPANY_INFO.kiyakuUrl,
+  ];
+  notes.forEach(note => {
+    const lr = blank(); lr[0] = note;
+    push(lr);
+    mr(r-1, 0, r-1, NCOL-1);
+  });
 
-  // === 復元用メタ行（最終行）===
-  data.push(blank());
-  const metaRow = blank();
-  metaRow[0] = META_TAG;
-  metaRow[1] = JSON.stringify(q);
-  data.push(metaRow);
+  // === 復元用メタ行 ===
+  pushBlank();
+  const meta = blank();
+  meta[0] = META_TAG;
+  meta[1] = JSON.stringify(q);
+  push(meta);
+  mr(r-1, 1, r-1, NCOL-1);
 
+  // === Workbook 構築 ===
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet(data);
 
-  // 列幅
   ws['!cols'] = [
-    { wch: 14 },  // A ラベル/#
-    { wch: 36 },  // B 値/サービス名
-    { wch: 30 },  // C 内容
-    { wch: 22 },  // D 備考
-    { wch: 6 },   // E 数量
-    { wch: 12 },  // F 初期費用
-    { wch: 12 },  // G 月額
-    { wch: 14 },  // H 年額
-    { wch: 10 },  // I 値引き/集計ラベル
-    { wch: 14 },  // J 小計/集計値
+    { wch: 14 },  // A セクション縦ラベル
+    { wch: 18 },  // B 項目ラベル / サービス名
+    { wch: 8 },   // C 数量 / サブラベル
+    { wch: 12 },  // D 初期費用 / 値
+    { wch: 12 },  // E 月額 / サブラベル
+    { wch: 16 },  // F 年額 / 値
+    { wch: 12 },  // G 値引き / 集計ラベル
+    { wch: 16 },  // H 小計 / 集計値
   ];
+
+  const rowsArr = [];
+  Object.keys(rowHeights).forEach(k => { rowsArr[Number(k)] = rowHeights[k]; });
+  ws['!rows'] = rowsArr;
+  ws['!merges'] = merges;
 
   XLSX.utils.book_append_sheet(wb, ws, '見積書');
 
