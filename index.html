@@ -1,0 +1,1518 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ナレッジマーケティング｜見積書作成システム</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* ========================================
+   RESET & BASE
+   ======================================== */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "メイリオ", "Meiryo", sans-serif;
+  background: #f3f5f9;
+  color: #1f2937;
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+button { font-family: inherit; }
+input, select, textarea {
+  font-family: inherit;
+  font-size: 14px;
+}
+
+/* ========================================
+   HEADER
+   ======================================== */
+.header {
+  background: linear-gradient(135deg, #1e3a5f 0%, #2c5282 100%);
+  color: #fff;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.logo {
+  font-size: 15px;
+  font-weight: bold;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+.logo .sub { font-size: 11px; font-weight: normal; opacity: 0.8; margin-left: 6px; }
+.header-tabs {
+  display: flex;
+  gap: 6px;
+}
+.header-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.tab-btn {
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.3);
+  color: #fff;
+  padding: 7px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+.tab-btn:hover { background: rgba(255,255,255,0.28); }
+.tab-btn.active { background: #fff; color: #1e3a5f; }
+
+.btn-out {
+  border: none;
+  padding: 7px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s;
+}
+.btn-out:hover { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+.btn-pdf    { background: #f59e0b; color: #fff; }
+.btn-pdf:hover { background: #d97706; }
+.btn-excel  { background: #10b981; color: #fff; }
+.btn-excel:hover { background: #059669; }
+.btn-import { background: #6366f1; color: #fff; }
+.btn-import:hover { background: #4f46e5; }
+.btn-sheet  { background: #0ea5e9; color: #fff; }
+.btn-sheet:hover { background: #0284c7; }
+.btn-clear  { background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.3); }
+.btn-clear:hover { background: rgba(239,68,68,0.85); border-color: rgba(239,68,68,0.85); }
+.btn-reload { background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.3); }
+.btn-reload:hover { background: rgba(255,255,255,0.28); }
+
+/* ========================================
+   MAIN
+   ======================================== */
+.main {
+  max-width: 1200px;
+  margin: 20px auto;
+  padding: 0 20px;
+}
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+.section {
+  background: #fff;
+  border-radius: 10px;
+  padding: 18px 22px;
+  margin-bottom: 14px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  border: 1px solid #e5e7eb;
+}
+.section h3 {
+  font-size: 14px;
+  color: #1e3a5f;
+  font-weight: 700;
+  padding-left: 10px;
+  border-left: 4px solid #1e3a5f;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.section h3 .note {
+  font-weight: normal;
+  font-size: 11px;
+  color: #888;
+  margin-left: auto;
+}
+
+/* ========================================
+   FORM GRID
+   ======================================== */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px 14px;
+}
+.grid-2 { grid-template-columns: 1fr 1fr; }
+.grid-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+.col-full { grid-column: 1 / -1; }
+.col-2 { grid-column: span 2; }
+
+.f { display: flex; flex-direction: column; gap: 4px; }
+.f label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #4b5563;
+  letter-spacing: 0.2px;
+}
+.f label.req::after { content: ' *'; color: #ef4444; }
+.f input, .f select, .f textarea {
+  padding: 7px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 5px;
+  background: #fff;
+  transition: border 0.15s, box-shadow 0.15s;
+}
+.f input:focus, .f select:focus, .f textarea:focus {
+  outline: none;
+  border-color: #2c5282;
+  box-shadow: 0 0 0 3px rgba(44,82,130,0.12);
+}
+.f input[readonly], .f input.readonly {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+.f .hint { font-size: 10px; color: #888; }
+
+/* ========================================
+   SERVICE CHECKBOX LIST
+   ======================================== */
+.service-list {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.service-row {
+  display: grid;
+  grid-template-columns: 36px minmax(180px, 1.4fr) 90px 110px 110px 110px 90px 110px;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #f1f3f6;
+  align-items: center;
+  font-size: 13px;
+}
+.service-row:last-child { border-bottom: none; }
+.service-row.header {
+  background: #f8fafc;
+  font-size: 11px;
+  font-weight: 700;
+  color: #4b5563;
+  letter-spacing: 0.2px;
+}
+.service-row.checked { background: #f0f7ff; }
+.service-row .name { font-weight: 600; color: #1f2937; }
+.service-row .desc { font-size: 11px; color: #6b7280; margin-top: 2px; line-height: 1.4; }
+.service-row input[type="number"], .service-row input[type="text"] {
+  padding: 5px 7px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 12px;
+  text-align: right;
+  width: 100%;
+}
+.service-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+.service-row .subtotal {
+  font-weight: 700;
+  color: #1e3a5f;
+  text-align: right;
+}
+.service-row .price-empty { color: #cbd5e0; text-align: right; font-size: 11px; }
+
+.master-status {
+  font-size: 12px;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.master-status .ok { color: #10b981; }
+.master-status .err { color: #ef4444; }
+
+/* ========================================
+   SUMMARY
+   ======================================== */
+.summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 30px;
+}
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px dashed #e5e7eb;
+}
+.summary-row.total {
+  border-top: 2px solid #1e3a5f;
+  border-bottom: 2px solid #1e3a5f;
+  margin-top: 6px;
+  padding: 10px 0;
+  background: #f0f7ff;
+  padding-left: 12px;
+  padding-right: 12px;
+  border-radius: 4px;
+}
+.summary-row .label { font-size: 12px; color: #4b5563; }
+.summary-row .value { font-weight: 700; color: #1e3a5f; font-size: 15px; }
+.summary-row.total .label { font-size: 14px; font-weight: 700; }
+.summary-row.total .value { font-size: 18px; }
+.summary-row input {
+  width: 130px;
+  text-align: right;
+  padding: 5px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+}
+
+/* ========================================
+   PREVIEW (見積書レイアウト)
+   ======================================== */
+.preview-page {
+  background: #fff;
+  padding: 30mm 20mm;
+  max-width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  color: #1f2937;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.pv-title {
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  margin-bottom: 24px;
+  padding-bottom: 10px;
+  border-bottom: 3px double #1e3a5f;
+}
+.pv-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.pv-customer { font-size: 16px; }
+.pv-customer .company { font-weight: 700; font-size: 18px; }
+.pv-date { text-align: right; font-size: 12px; }
+.pv-vendor {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border-left: 3px solid #1e3a5f;
+  font-size: 11px;
+}
+.pv-vendor .name { font-weight: 700; font-size: 13px; }
+
+.pv-section { margin: 18px 0; }
+.pv-section h4 {
+  font-size: 12px;
+  color: #1e3a5f;
+  font-weight: 700;
+  border-left: 3px solid #1e3a5f;
+  padding-left: 8px;
+  margin-bottom: 8px;
+}
+.pv-info-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.pv-info-table td {
+  padding: 5px 8px;
+  border: 1px solid #d1d5db;
+  font-size: 11px;
+  vertical-align: top;
+}
+.pv-info-table td.h {
+  background: #f3f5f9;
+  font-weight: 600;
+  width: 110px;
+  white-space: nowrap;
+}
+
+.pv-items {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 4px;
+}
+.pv-items th, .pv-items td {
+  border: 1px solid #d1d5db;
+  padding: 6px 8px;
+  font-size: 11px;
+  vertical-align: top;
+}
+.pv-items th {
+  background: #1e3a5f;
+  color: #fff;
+  font-weight: 600;
+  text-align: center;
+}
+.pv-items td.num { text-align: right; }
+.pv-items td.ctr { text-align: center; }
+.pv-items .item-name { font-weight: 600; }
+.pv-items .item-desc { font-size: 10px; color: #6b7280; margin-top: 2px; }
+
+.pv-totals {
+  margin-top: 14px;
+  display: flex;
+  justify-content: flex-end;
+}
+.pv-totals table {
+  border-collapse: collapse;
+  min-width: 320px;
+}
+.pv-totals td {
+  padding: 5px 12px;
+  font-size: 11px;
+  border: 1px solid #d1d5db;
+}
+.pv-totals td.h { background: #f3f5f9; font-weight: 600; }
+.pv-totals td.num { text-align: right; min-width: 130px; }
+.pv-totals tr.grand td { font-weight: 700; background: #fff7ed; color: #b45309; font-size: 13px; }
+.pv-totals tr.grand td.h { background: #1e3a5f; color: #fff; }
+
+.pv-footer {
+  margin-top: 24px;
+  font-size: 10px;
+  color: #6b7280;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 10px;
+}
+.pv-footer a { color: #2c5282; }
+
+.pv-empty {
+  padding: 40px;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+/* ========================================
+   MODAL
+   ======================================== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+  background: #fff;
+  border-radius: 10px;
+  padding: 24px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+}
+.modal h3 {
+  font-size: 16px;
+  margin-bottom: 14px;
+  color: #1e3a5f;
+}
+.modal input[type="text"] {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 5px;
+  margin-bottom: 14px;
+}
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.modal-actions button {
+  padding: 8px 16px;
+  border-radius: 5px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+}
+.modal-actions .cancel { background: #e5e7eb; color: #4b5563; }
+.modal-actions .ok { background: #1e3a5f; color: #fff; }
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1e3a5f;
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-size: 13px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  z-index: 2000;
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(-6px); }
+.toast.error { background: #b91c1c; }
+.toast.ok    { background: #047857; }
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+@media (max-width: 900px) {
+  .grid, .grid-2, .grid-4 { grid-template-columns: 1fr 1fr; }
+  .col-2 { grid-column: span 2; }
+  .service-row {
+    grid-template-columns: 28px 1fr 70px 90px;
+    grid-template-rows: auto auto;
+  }
+  .summary { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+  .header { padding: 8px 12px; }
+  .main { padding: 0 12px; margin: 12px auto; }
+  .logo { font-size: 13px; }
+  .logo .sub { display: none; }
+  .grid, .grid-2, .grid-4 { grid-template-columns: 1fr; }
+  .col-2 { grid-column: span 1; }
+}
+
+/* ========================================
+   PRINT
+   ======================================== */
+@media print {
+  body { background: #fff; }
+  .header, .no-print { display: none !important; }
+  .main { max-width: 100%; margin: 0; padding: 0; }
+  .tab-content { display: none !important; }
+  .tab-content.preview-only-on-print { display: block !important; }
+  .preview-page {
+    box-shadow: none;
+    margin: 0;
+    padding: 15mm 12mm;
+    max-width: 100%;
+    min-height: 0;
+    page-break-after: always;
+  }
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- =====================  HEADER  ===================== -->
+<header class="header no-print">
+  <div class="logo">🏢 ナレッジマーケティング<span class="sub">見積書作成システム</span></div>
+  <div class="header-tabs">
+    <button class="tab-btn active" id="btn-form"    onclick="showTab('form')">📋 入力フォーム</button>
+    <button class="tab-btn"        id="btn-preview" onclick="showTab('preview')">📄 プレビュー</button>
+  </div>
+  <div class="header-actions">
+    <button class="btn-out btn-pdf"    onclick="exportPDF()">🖨 PDF</button>
+    <button class="btn-out btn-excel"  onclick="exportToExcel()">📊 Excel</button>
+    <button class="btn-out btn-import" onclick="document.getElementById('xlsx-input').click()">📂 Excel読込</button>
+    <button class="btn-out btn-sheet"  onclick="openSheetUrlModal()">🔗 スプシURL</button>
+    <button class="btn-out btn-reload" onclick="reloadMaster()" title="マスター再読込">🔄 マスター</button>
+    <button class="btn-out btn-clear"  onclick="clearForm()">🗑 クリア</button>
+  </div>
+  <input type="file" id="xlsx-input" accept=".xlsx" style="display:none" onchange="importFromExcel(event)">
+</header>
+
+<!-- =====================  MAIN  ===================== -->
+<main class="main">
+
+  <!-- ===== TAB: 入力フォーム ===== -->
+  <div class="tab-content active" id="tab-form">
+
+    <!-- 概要情報 -->
+    <section class="section">
+      <h3>📝 概要情報</h3>
+      <div class="grid">
+        <div class="f">
+          <label class="req">訪問日（作成日）</label>
+          <input type="date" id="issueDate">
+        </div>
+        <div class="f">
+          <label>見積有効期限</label>
+          <input type="date" id="validUntil">
+        </div>
+        <div class="f">
+          <label>支援開始月</label>
+          <input type="month" id="supportStartMonth">
+        </div>
+
+        <div class="f col-2">
+          <label class="req">顧客会社名</label>
+          <input type="text" id="customerCompany" placeholder="例：株式会社○○○○">
+        </div>
+        <div class="f">
+          <label>形式</label>
+          <select id="signFormat">
+            <option value="">-- 選択 --</option>
+            <option value="GMOサイン">GMOサイン</option>
+            <option value="クラウドサイン">クラウドサイン</option>
+            <option value="紙">紙</option>
+            <option value="その他">その他</option>
+          </select>
+        </div>
+
+        <div class="f col-full">
+          <label>顧客所在地</label>
+          <input type="text" id="customerAddress" placeholder="例：愛知県名古屋市○○区○○ 1-2-3">
+        </div>
+
+        <div class="f">
+          <label>役職</label>
+          <input type="text" id="customerTitle" placeholder="例：代表取締役">
+        </div>
+        <div class="f">
+          <label>代表者氏名</label>
+          <input type="text" id="customerName" placeholder="例：山田 太郎">
+        </div>
+        <div class="f"></div>
+
+        <div class="f">
+          <label class="req">契約開始日</label>
+          <input type="date" id="contractStartDate">
+        </div>
+        <div class="f">
+          <label class="req">契約期間（月）</label>
+          <input type="number" id="contractMonths" value="12" min="1" max="120">
+        </div>
+        <div class="f">
+          <label>契約終了日</label>
+          <input type="text" id="contractEndDate" class="readonly" readonly>
+          <div class="hint">開始日と期間から自動計算</div>
+        </div>
+
+        <div class="f">
+          <label>支払回数</label>
+          <input type="number" id="paymentCount" value="12" min="1" max="120">
+        </div>
+        <div class="f">
+          <label>初回支払期日</label>
+          <input type="date" id="firstPaymentDue">
+        </div>
+        <div class="f">
+          <label>2回目以降請求時期</label>
+          <input type="text" id="recurringPaymentTerm" value="利用月の当月末支払（土日祝の場合は前営業日）">
+        </div>
+
+        <div class="f">
+          <label>見積担当者</label>
+          <input type="text" id="salesPerson" placeholder="例：山田 太郎">
+        </div>
+        <div class="f">
+          <label>代理店名</label>
+          <input type="text" id="agencyName" placeholder="（任意）">
+        </div>
+        <div class="f"></div>
+      </div>
+    </section>
+
+    <!-- サービス選択 -->
+    <section class="section">
+      <h3>
+        🛒 サービス選択
+        <span class="master-status" id="masterStatus">マスター読込中...</span>
+      </h3>
+      <div class="service-list" id="serviceList">
+        <!-- service rows injected here -->
+      </div>
+      <div style="margin-top:10px; font-size:11px; color:#6b7280;">
+        ※ 商品マスタはGoogle Sheetで管理されています。サービス内容や金額の追加・変更はスプシで行ってください。
+        変更後は右上の「🔄 マスター」ボタンを押すと最新版が読み込まれます。
+      </div>
+    </section>
+
+    <!-- 集計 -->
+    <section class="section">
+      <h3>💰 集計（税別）</h3>
+      <div class="summary">
+        <div>
+          <div class="summary-row">
+            <span class="label">初期費用合計</span>
+            <span class="value" id="sum-initial">¥0</span>
+          </div>
+          <div class="summary-row">
+            <span class="label">月額合計</span>
+            <span class="value" id="sum-monthly">¥0</span>
+          </div>
+          <div class="summary-row">
+            <span class="label">月額 × 契約月数</span>
+            <span class="value" id="sum-monthly-total">¥0</span>
+          </div>
+          <div class="summary-row">
+            <span class="label">年額合計</span>
+            <span class="value" id="sum-yearly">¥0</span>
+          </div>
+        </div>
+        <div>
+          <div class="summary-row">
+            <span class="label">全体値引き</span>
+            <input type="number" id="totalDiscount" value="0" min="0" step="1000" oninput="recalc()">
+          </div>
+          <div class="summary-row total">
+            <span class="label">合計（税別）</span>
+            <span class="value" id="sum-grand">¥0</span>
+          </div>
+          <div class="summary-row">
+            <span class="label">初回支払額</span>
+            <span class="value" id="sum-first">¥0</span>
+          </div>
+          <div class="summary-row">
+            <span class="label">2回目以降月額</span>
+            <span class="value" id="sum-recurring">¥0</span>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:10px; font-size:11px; color:#6b7280;">
+        初回支払額 = 初期費用合計 + 月額1ヶ月分 + 年額合計
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ===== TAB: プレビュー ===== -->
+  <div class="tab-content preview-only-on-print" id="tab-preview">
+    <div class="preview-page" id="previewPage">
+      <div class="pv-empty">入力フォームで内容を入力してください。</div>
+    </div>
+  </div>
+
+</main>
+
+<!-- =====================  MODAL: スプシURL  ===================== -->
+<div class="modal-overlay no-print" id="sheetUrlModal">
+  <div class="modal">
+    <h3>🔗 スプレッドシートURLから復元</h3>
+    <p style="font-size:12px; color:#6b7280; margin-bottom:10px;">
+      過去に出力したExcelをGoogleドライブにアップロードしてスプシ化したものでもOK。<br>
+      「ファイル → 共有 → <strong>ウェブに公開</strong>」で発行されたURL（<code>/d/e/.../pub?...output=csv</code>）を貼ると確実に動きます。<br>
+      通常の編集画面URLでもサーバー側CORSが許可されていれば動作します。
+    </p>
+    <input type="text" id="sheetUrlInput" placeholder="https://docs.google.com/spreadsheets/d/e/xxxx/pub?...output=csv">
+    <div class="modal-actions">
+      <button class="cancel" onclick="closeSheetUrlModal()">キャンセル</button>
+      <button class="ok"     onclick="importFromSheetUrl()">読込</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- =====================  JAVASCRIPT  ===================== -->
+<script>
+'use strict';
+
+/* ===========================================================
+   CONSTANTS (運用時はここを書き換える)
+   =========================================================== */
+const COMPANY_INFO = {
+  name: '株式会社ナレッジマーケティング',
+  postalCode: '〒450-0002',
+  address: '愛知県名古屋市中村区名駅 4丁目24-5 第2森ビル401',
+  kiyakuUrl: 'https://knowledge-hd.co.jp/kiyaku/',
+};
+
+// マスタースプシの「ウェブに公開」CSV URL（CORS対応のためこの形式を使用）
+// 公開しなおした場合は、ファイル → 共有 → ウェブに公開 で発行されたURLに差し替えてください。
+const MASTER_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS9DRW62ToAXngTF4hG49bY7VH7Comebs_GOKJDhb5eoZHN2ugheCoLN708TS5dtAwIH5rgQZ_cORZK/pub?gid=852160199&single=true&output=csv';
+
+const META_TAG = '__QUOTE_META__'; // Excel復元用のマーカー文字列
+
+/* ===========================================================
+   STATE
+   =========================================================== */
+let MASTER_PRODUCTS = []; // 商品マスタ（マスター読込で取得）
+let ITEM_STATE      = {}; // productId -> { checked, qty, initialFee, monthlyFee, yearlyFee, discount }
+
+/* ===========================================================
+   UTILITIES
+   =========================================================== */
+function $(id) { return document.getElementById(id); }
+
+function toast(msg, type) {
+  const el = $('toast');
+  el.textContent = msg;
+  el.className = 'toast show ' + (type || '');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { el.className = 'toast'; }, 2800);
+}
+
+function fmtYen(n) {
+  if (n == null || isNaN(n) || n === 0) return '¥0';
+  return '¥' + Math.round(n).toLocaleString('ja-JP');
+}
+
+function fmtYenOrBlank(n) {
+  if (n == null || isNaN(n) || n === 0) return '';
+  return '¥' + Math.round(n).toLocaleString('ja-JP');
+}
+
+function fmtDateJP(s) {
+  if (!s) return '';
+  const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return s;
+  return `${m[1]}年${parseInt(m[2])}月${parseInt(m[3])}日`;
+}
+
+function parseNumber(v) {
+  if (v == null) return null;
+  if (typeof v === 'number') return v;
+  const s = String(v).replace(/[¥,\s　]/g, '').trim();
+  if (s === '' || s === '-') return null;
+  const n = Number(s);
+  return isNaN(n) ? null : n;
+}
+
+function parseBool(v) {
+  if (v === true || v === false) return v;
+  const s = String(v || '').trim().toUpperCase();
+  return s === 'TRUE' || s === '1' || s === 'YES' || s === 'ON';
+}
+
+/* RFC4180-ish CSV parser (handles quoted fields, commas, newlines) */
+function parseCSV(text) {
+  const rows = [];
+  let row = [], field = '', i = 0, inQuotes = false;
+  text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  while (i < text.length) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i+1] === '"') { field += '"'; i += 2; continue; }
+        inQuotes = false; i++; continue;
+      }
+      field += c; i++;
+    } else {
+      if (c === '"') { inQuotes = true; i++; continue; }
+      if (c === ',') { row.push(field); field = ''; i++; continue; }
+      if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; i++; continue; }
+      field += c; i++;
+    }
+  }
+  if (field.length > 0 || row.length > 0) { row.push(field); rows.push(row); }
+  return rows;
+}
+
+/* ===========================================================
+   TAB SWITCHING
+   =========================================================== */
+function showTab(name) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  $('tab-' + name).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  $('btn-' + name).classList.add('active');
+  if (name === 'preview') renderPreview();
+}
+
+/* ===========================================================
+   DATE: 契約終了日 自動計算
+   =========================================================== */
+function calcEndDate(startDateStr, months) {
+  if (!startDateStr || !months || months < 1) return '';
+  const d = new Date(startDateStr + 'T00:00:00');
+  if (isNaN(d.getTime())) return '';
+  d.setMonth(d.getMonth() + Number(months));
+  d.setDate(d.getDate() - 1);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}`;
+}
+
+function updateEndDate() {
+  const s = $('contractStartDate').value;
+  const m = parseInt($('contractMonths').value, 10);
+  $('contractEndDate').value = calcEndDate(s, m);
+}
+
+/* ===========================================================
+   MASTER LOAD
+   =========================================================== */
+async function loadMaster() {
+  const status = $('masterStatus');
+  // file:// プロトコル検出（origin=null になりGoogle Sheets CORSが通らないため事前案内）
+  if (location.protocol === 'file:') {
+    status.innerHTML = '<span class="err">✗ file://では動作しません</span>';
+    showFileProtocolNotice();
+    return false;
+  }
+  status.innerHTML = '<span>📡 マスター読込中…</span>';
+  // キャッシュ回避用にタイムスタンプを付与（ウェブに公開URLはGoogle側で5分キャッシュされるため）
+  const url = MASTER_CSV_URL + (MASTER_CSV_URL.includes('?') ? '&' : '?') + '_=' + Date.now();
+  try {
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const csv = await res.text();
+    const rows = parseCSV(csv);
+    if (!rows.length) throw new Error('空のCSVが返されました');
+
+    // 1行目はヘッダーと想定。データ行のうち「有効=TRUE」かつ「サービス名」が非空のものだけ採用
+    const products = [];
+    let autoId = 1;
+    for (let r = 1; r < rows.length; r++) {
+      const row = rows[r];
+      if (!row || row.every(c => !c || !String(c).trim())) continue;
+      const enabled = parseBool(row[1]);
+      const name = (row[2] || '').trim();
+      if (!enabled || !name) continue;
+      const rawId = parseNumber(row[0]);
+      products.push({
+        id: rawId != null ? rawId : autoId,
+        enabled: true,
+        name: name,
+        content: (row[3] || '').trim(),
+        note:    (row[4] || '').trim(),
+        initialFee: parseNumber(row[5]),
+        monthlyFee: parseNumber(row[6]),
+        yearlyFee:  parseNumber(row[7]),
+      });
+      autoId++;
+    }
+
+    MASTER_PRODUCTS = products;
+    renderServiceList();
+    status.innerHTML = `<span class="ok">✓ ${products.length}件読込済</span>`;
+    return true;
+  } catch (e) {
+    console.error(e);
+    status.innerHTML = `<span class="err">✗ 読込失敗: ${e.message}</span>`;
+    toast('マスター読込に失敗しました。スプシの公開設定をご確認ください。', 'error');
+    return false;
+  }
+}
+
+function showFileProtocolNotice() {
+  const list = $('serviceList');
+  list.innerHTML = `
+    <div style="padding:20px; background:#fef3c7; border:1px solid #f59e0b; border-radius:8px; color:#92400e; font-size:13px; line-height:1.7;">
+      <div style="font-weight:700; font-size:14px; margin-bottom:8px;">⚠️ このページは <code>file://</code> で開かれています</div>
+      Google スプレッドシートは、ローカルファイル（<code>file://</code>）から直接読込むことができません（Google側のCORSポリシー）。<br>
+      <br>
+      解決方法は以下のいずれかです：<br>
+      <br>
+      <strong>① Vercel等にデプロイして <code>https://</code> で開く</strong>（本番運用の方法・推奨）<br>
+      <strong>② ローカルHTTPサーバーを立てて <code>http://localhost</code> で開く</strong><br>
+      <span style="font-size:11px;">　例：このフォルダで <code>python -m http.server 8000</code> を実行し <code>http://localhost:8000</code> を開く</span>
+    </div>`;
+}
+
+async function reloadMaster() {
+  // 既存の入力（数量・単価編集・値引き・チェック）はできる限り保持する
+  const ok = await loadMaster();
+  if (ok) toast('マスターを再読込しました', 'ok');
+}
+
+/* ===========================================================
+   SERVICE LIST RENDERING
+   =========================================================== */
+function renderServiceList() {
+  const list = $('serviceList');
+  if (!MASTER_PRODUCTS.length) {
+    list.innerHTML = '<div class="pv-empty" style="padding:20px">読み込める商品がありません</div>';
+    return;
+  }
+
+  let html = `
+    <div class="service-row header">
+      <div></div>
+      <div>サービス名 / 内容</div>
+      <div style="text-align:center">数量</div>
+      <div style="text-align:center">初期費用</div>
+      <div style="text-align:center">月額</div>
+      <div style="text-align:center">年額</div>
+      <div style="text-align:center">値引き</div>
+      <div style="text-align:right">小計</div>
+    </div>
+  `;
+
+  MASTER_PRODUCTS.forEach(p => {
+    const s = ITEM_STATE[p.id] || {};
+    const checked = !!s.checked;
+    const qty = s.qty != null ? s.qty : 1;
+    const initialFee = s.initialFee != null ? s.initialFee : (p.initialFee || '');
+    const monthlyFee = s.monthlyFee != null ? s.monthlyFee : (p.monthlyFee || '');
+    const yearlyFee  = s.yearlyFee  != null ? s.yearlyFee  : (p.yearlyFee  || '');
+    const discount   = s.discount   != null ? s.discount   : 0;
+
+    html += `
+      <div class="service-row ${checked ? 'checked' : ''}" data-pid="${p.id}">
+        <div><input type="checkbox" ${checked ? 'checked' : ''} onchange="onItemChange(${p.id}, 'checked', this.checked)"></div>
+        <div>
+          <div class="name">${escapeHtml(p.name)}</div>
+          ${p.content ? `<div class="desc">${escapeHtml(p.content)}</div>` : ''}
+          ${p.note ? `<div class="desc">📌 ${escapeHtml(p.note)}</div>` : ''}
+        </div>
+        <div><input type="number" min="0" step="0.1" value="${qty}" oninput="onItemChange(${p.id}, 'qty', this.value)"></div>
+        <div>${p.initialFee != null ? `<input type="number" value="${initialFee}" oninput="onItemChange(${p.id}, 'initialFee', this.value)">` : `<div class="price-empty">-</div>`}</div>
+        <div>${p.monthlyFee != null ? `<input type="number" value="${monthlyFee}" oninput="onItemChange(${p.id}, 'monthlyFee', this.value)">` : `<div class="price-empty">-</div>`}</div>
+        <div>${p.yearlyFee  != null ? `<input type="number" value="${yearlyFee }" oninput="onItemChange(${p.id}, 'yearlyFee',  this.value)">` : `<div class="price-empty">-</div>`}</div>
+        <div><input type="number" value="${discount}" min="0" oninput="onItemChange(${p.id}, 'discount', this.value)"></div>
+        <div class="subtotal" id="subtotal-${p.id}">¥0</div>
+      </div>
+    `;
+  });
+
+  list.innerHTML = html;
+  recalc();
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function onItemChange(pid, key, val) {
+  if (!ITEM_STATE[pid]) ITEM_STATE[pid] = {};
+  if (key === 'checked') {
+    ITEM_STATE[pid].checked = !!val;
+    const row = document.querySelector(`.service-row[data-pid="${pid}"]`);
+    if (row) row.classList.toggle('checked', !!val);
+  } else if (key === 'qty') {
+    ITEM_STATE[pid].qty = parseFloat(val) || 0;
+  } else {
+    ITEM_STATE[pid][key] = parseNumber(val);
+  }
+  recalc();
+}
+
+/* ===========================================================
+   CALCULATION
+   =========================================================== */
+function getSelectedItems() {
+  return MASTER_PRODUCTS
+    .filter(p => ITEM_STATE[p.id] && ITEM_STATE[p.id].checked)
+    .map(p => {
+      const s = ITEM_STATE[p.id];
+      return {
+        productId: p.id,
+        productName: p.name,
+        content: p.content,
+        note: p.note,
+        quantity: s.qty != null ? s.qty : 1,
+        initialFee: s.initialFee != null ? s.initialFee : p.initialFee,
+        monthlyFee: s.monthlyFee != null ? s.monthlyFee : p.monthlyFee,
+        yearlyFee:  s.yearlyFee  != null ? s.yearlyFee  : p.yearlyFee,
+        discount:  s.discount  != null ? s.discount  : 0,
+      };
+    });
+}
+
+function calcSubtotal(item) {
+  const qty = item.quantity || 1;
+  const i = (item.initialFee || 0) * qty;
+  const m = (item.monthlyFee || 0) * qty;
+  const y = (item.yearlyFee  || 0) * qty;
+  // 小計は「単発（初期＋年）＋ 月額」を1ヶ月換算で表示。値引きは初期に充当。
+  return Math.max(0, i + m + y - (item.discount || 0));
+}
+
+function recalc() {
+  const items = getSelectedItems();
+  let initialTotal = 0, monthlyTotal = 0, yearlyTotal = 0, itemDiscountTotal = 0;
+
+  items.forEach(it => {
+    const qty = it.quantity || 1;
+    if (it.initialFee) initialTotal += it.initialFee * qty;
+    if (it.monthlyFee) monthlyTotal += it.monthlyFee * qty;
+    if (it.yearlyFee)  yearlyTotal  += it.yearlyFee  * qty;
+    itemDiscountTotal += (it.discount || 0);
+  });
+
+  // 各行の小計を更新
+  MASTER_PRODUCTS.forEach(p => {
+    const cell = $('subtotal-' + p.id);
+    if (!cell) return;
+    const st = ITEM_STATE[p.id];
+    if (st && st.checked) {
+      const s = items.find(x => x.productId === p.id);
+      cell.textContent = s ? fmtYen(calcSubtotal(s)) : '¥0';
+    } else {
+      cell.textContent = '¥0';
+    }
+  });
+
+  const months = Math.max(1, parseInt($('contractMonths').value, 10) || 1);
+  const monthlySum = monthlyTotal * months;
+  const totalDiscount = parseFloat($('totalDiscount').value) || 0;
+  const grandTotal = Math.max(0, initialTotal + monthlySum + yearlyTotal - itemDiscountTotal - totalDiscount);
+  const firstPayment = initialTotal + monthlyTotal + yearlyTotal; // 確定：初期＋月額1ヶ月＋年額
+  const recurring = monthlyTotal;
+
+  $('sum-initial').textContent       = fmtYen(initialTotal);
+  $('sum-monthly').textContent       = fmtYen(monthlyTotal);
+  $('sum-monthly-total').textContent = fmtYen(monthlySum);
+  $('sum-yearly').textContent        = fmtYen(yearlyTotal);
+  $('sum-grand').textContent         = fmtYen(grandTotal);
+  $('sum-first').textContent         = fmtYen(firstPayment);
+  $('sum-recurring').textContent     = fmtYen(recurring);
+
+  return {
+    initialTotal, monthlyTotal, monthlySum, yearlyTotal,
+    itemDiscountTotal, totalDiscount, grandTotal, firstPayment, recurring,
+    months, items
+  };
+}
+
+/* ===========================================================
+   COLLECT QUOTE DATA
+   =========================================================== */
+function collectQuoteData() {
+  const items = getSelectedItems();
+  return {
+    version: '1.0',
+    createdAt: new Date().toISOString(),
+
+    issueDate:           $('issueDate').value,
+    validUntil:          $('validUntil').value,
+    customerCompany:     $('customerCompany').value,
+    customerAddress:     $('customerAddress').value,
+    customerTitle:       $('customerTitle').value,
+    customerName:        $('customerName').value,
+    signFormat:          $('signFormat').value,
+    supportStartMonth:   $('supportStartMonth').value,
+    contractStartDate:   $('contractStartDate').value,
+    contractMonths:      parseInt($('contractMonths').value, 10) || 12,
+    contractEndDate:     $('contractEndDate').value,
+    paymentCount:        parseInt($('paymentCount').value, 10) || null,
+    firstPaymentDue:     $('firstPaymentDue').value,
+    recurringPaymentTerm:$('recurringPaymentTerm').value,
+    salesPerson:         $('salesPerson').value,
+    agencyName:          $('agencyName').value,
+    totalDiscount:       parseFloat($('totalDiscount').value) || 0,
+
+    items: items,
+  };
+}
+
+/* ===========================================================
+   PREVIEW
+   =========================================================== */
+function renderPreview() {
+  const q = collectQuoteData();
+  const totals = recalc();
+
+  if (!q.items.length && !q.customerCompany) {
+    $('previewPage').innerHTML = '<div class="pv-empty">入力フォームで内容を入力してください。</div>';
+    return;
+  }
+
+  // タイトル用サービス名：選択商品名を連結
+  const serviceTitle = q.items.map(it => it.productName).join(' / ') || '（サービス未選択）';
+
+  let itemRows = '';
+  if (q.items.length) {
+    q.items.forEach((it, idx) => {
+      const qty = it.quantity || 1;
+      itemRows += `
+        <tr>
+          <td class="ctr">${idx + 1}</td>
+          <td>
+            <div class="item-name">${escapeHtml(it.productName)}</div>
+            ${it.content ? `<div class="item-desc">${escapeHtml(it.content)}</div>` : ''}
+            ${it.note ? `<div class="item-desc">※ ${escapeHtml(it.note)}</div>` : ''}
+          </td>
+          <td class="ctr">${qty}</td>
+          <td class="num">${fmtYenOrBlank(it.initialFee)}</td>
+          <td class="num">${fmtYenOrBlank(it.monthlyFee)}</td>
+          <td class="num">${fmtYenOrBlank(it.yearlyFee)}</td>
+          <td class="num">${it.discount ? '-' + fmtYen(it.discount) : ''}</td>
+          <td class="num">${fmtYen(calcSubtotal(it))}</td>
+        </tr>
+      `;
+    });
+  } else {
+    itemRows = `<tr><td colspan="8" class="ctr" style="padding:14px; color:#9ca3af;">サービスが選択されていません</td></tr>`;
+  }
+
+  const html = `
+    <div class="pv-title">見積書 兼 申込書</div>
+
+    <div class="pv-meta">
+      <div class="pv-customer">
+        <div class="company">${escapeHtml(q.customerCompany || '＿＿＿＿＿＿＿＿')} 御中</div>
+        <div style="margin-top:6px; font-size:11px;">下記の通り、御見積申し上げます。</div>
+      </div>
+      <div class="pv-date">
+        <div>発行日：${fmtDateJP(q.issueDate) || '＿＿＿＿'}</div>
+        ${q.validUntil ? `<div>有効期限：${fmtDateJP(q.validUntil)}</div>` : ''}
+        <div class="pv-vendor">
+          <div class="name">${escapeHtml(COMPANY_INFO.name)}</div>
+          <div>${escapeHtml(COMPANY_INFO.postalCode)}</div>
+          <div>${escapeHtml(COMPANY_INFO.address)}</div>
+          ${q.salesPerson ? `<div style="margin-top:4px;">担当：${escapeHtml(q.salesPerson)}</div>` : ''}
+        </div>
+      </div>
+    </div>
+
+    <div class="pv-section">
+      <h4>件名</h4>
+      <div style="padding:6px 10px; background:#fafbfd; border:1px solid #e5e7eb; border-radius:4px;">
+        ${escapeHtml(serviceTitle)}
+      </div>
+    </div>
+
+    <div class="pv-section">
+      <h4>契約情報</h4>
+      <table class="pv-info-table">
+        <tr>
+          <td class="h">顧客所在地</td><td>${escapeHtml(q.customerAddress) || ''}</td>
+          <td class="h">役職／代表者</td><td>${escapeHtml(q.customerTitle) || ''} ${escapeHtml(q.customerName) || ''}</td>
+        </tr>
+        <tr>
+          <td class="h">支援開始月</td><td>${escapeHtml(q.supportStartMonth) || ''}</td>
+          <td class="h">契約形式</td><td>${escapeHtml(q.signFormat) || ''}</td>
+        </tr>
+        <tr>
+          <td class="h">契約開始日</td><td>${fmtDateJP(q.contractStartDate) || ''}</td>
+          <td class="h">契約期間</td><td>${q.contractMonths ? q.contractMonths + ' ヶ月' : ''}</td>
+        </tr>
+        <tr>
+          <td class="h">契約終了日</td><td>${fmtDateJP(q.contractEndDate) || ''}</td>
+          <td class="h">支払回数</td><td>${q.paymentCount != null ? q.paymentCount + ' 回' : ''}</td>
+        </tr>
+        <tr>
+          <td class="h">初回支払期日</td><td>${fmtDateJP(q.firstPaymentDue) || ''}</td>
+          <td class="h">2回目以降</td><td>${escapeHtml(q.recurringPaymentTerm) || ''}</td>
+        </tr>
+        ${q.agencyName ? `<tr><td class="h">代理店</td><td colspan="3">${escapeHtml(q.agencyName)}</td></tr>` : ''}
+      </table>
+    </div>
+
+    <div class="pv-section">
+      <h4>サービス明細</h4>
+      <table class="pv-items">
+        <thead>
+          <tr>
+            <th style="width:32px">#</th>
+            <th>サービス名 / 内容</th>
+            <th style="width:48px">数量</th>
+            <th style="width:90px">初期費用</th>
+            <th style="width:90px">月額</th>
+            <th style="width:90px">年額</th>
+            <th style="width:80px">値引き</th>
+            <th style="width:100px">小計</th>
+          </tr>
+        </thead>
+        <tbody>${itemRows}</tbody>
+      </table>
+    </div>
+
+    <div class="pv-totals">
+      <table>
+        <tr><td class="h">初期費用合計</td><td class="num">${fmtYen(totals.initialTotal)}</td></tr>
+        <tr><td class="h">月額合計</td><td class="num">${fmtYen(totals.monthlyTotal)}</td></tr>
+        <tr><td class="h">月額 × ${totals.months}ヶ月</td><td class="num">${fmtYen(totals.monthlySum)}</td></tr>
+        <tr><td class="h">年額合計</td><td class="num">${fmtYen(totals.yearlyTotal)}</td></tr>
+        ${totals.totalDiscount ? `<tr><td class="h">全体値引き</td><td class="num">-${fmtYen(totals.totalDiscount)}</td></tr>` : ''}
+        <tr class="grand"><td class="h">合計（税別）</td><td class="num">${fmtYen(totals.grandTotal)}</td></tr>
+        <tr><td class="h">初回支払額</td><td class="num">${fmtYen(totals.firstPayment)}</td></tr>
+        <tr><td class="h">2回目以降月額</td><td class="num">${fmtYen(totals.recurring)}</td></tr>
+      </table>
+    </div>
+
+    <div class="pv-footer">
+      ※ 価格は全て税別表記です。<br>
+      ※ 本見積書は契約後、双方の合意の上、申込書として効力を持ちます。<br>
+      ※ 利用規約：<a href="${COMPANY_INFO.kiyakuUrl}" target="_blank">${COMPANY_INFO.kiyakuUrl}</a><br>
+      ${q.agencyName ? `※ 代理店：${escapeHtml(q.agencyName)}<br>` : ''}
+    </div>
+  `;
+
+  $('previewPage').innerHTML = html;
+}
+
+/* ===========================================================
+   PDF (window.print)
+   =========================================================== */
+function exportPDF() {
+  renderPreview();
+  // 印刷時はプレビューのみ表示するよう、印刷直前にタブを切り替えておく
+  showTab('preview');
+  setTimeout(() => window.print(), 100);
+}
+
+/* ===========================================================
+   EXCEL EXPORT (SheetJS)
+   =========================================================== */
+function exportToExcel() {
+  if (typeof XLSX === 'undefined') {
+    toast('SheetJSが読込できていません。オンライン環境で開いてください。', 'error');
+    return;
+  }
+  const q = collectQuoteData();
+  const totals = recalc();
+
+  const data = [];
+  data.push(['見積書 兼 申込書']);
+  data.push([]);
+  data.push([(q.customerCompany || '') + ' 御中', '', '', '', '', '', '発行日', q.issueDate]);
+  data.push(['', '', '', '', '', '', '有効期限', q.validUntil]);
+  data.push([]);
+  data.push(['発行元', COMPANY_INFO.name]);
+  data.push(['', COMPANY_INFO.postalCode + ' ' + COMPANY_INFO.address]);
+  if (q.salesPerson) data.push(['担当', q.salesPerson]);
+  data.push([]);
+  data.push(['【契約情報】']);
+  data.push(['顧客所在地', q.customerAddress, '', '', '役職／代表者', (q.customerTitle || '') + ' ' + (q.customerName || '')]);
+  data.push(['支援開始月', q.supportStartMonth, '', '', '契約形式', q.signFormat]);
+  data.push(['契約開始日', q.contractStartDate, '', '', '契約期間', q.contractMonths ? q.contractMonths + 'ヶ月' : '']);
+  data.push(['契約終了日', q.contractEndDate, '', '', '支払回数', q.paymentCount != null ? q.paymentCount + '回' : '']);
+  data.push(['初回支払期日', q.firstPaymentDue, '', '', '2回目以降', q.recurringPaymentTerm]);
+  if (q.agencyName) data.push(['代理店', q.agencyName]);
+  data.push([]);
+  data.push(['【サービス明細】']);
+  data.push(['#', 'サービス名', '内容', '備考', '数量', '初期費用', '月額', '年額', '値引き', '小計']);
+  q.items.forEach((it, idx) => {
+    data.push([
+      idx + 1,
+      it.productName,
+      it.content,
+      it.note,
+      it.quantity,
+      it.initialFee || '',
+      it.monthlyFee || '',
+      it.yearlyFee  || '',
+      it.discount   || '',
+      calcSubtotal(it),
+    ]);
+  });
+  data.push([]);
+  data.push(['', '', '', '', '', '', '', '', '初期費用合計', totals.initialTotal]);
+  data.push(['', '', '', '', '', '', '', '', '月額合計',     totals.monthlyTotal]);
+  data.push(['', '', '', '', '', '', '', '', `月額×${totals.months}ヶ月`, totals.monthlySum]);
+  data.push(['', '', '', '', '', '', '', '', '年額合計',     totals.yearlyTotal]);
+  if (totals.totalDiscount) data.push(['', '', '', '', '', '', '', '', '全体値引き', -totals.totalDiscount]);
+  data.push(['', '', '', '', '', '', '', '', '合計（税別）', totals.grandTotal]);
+  data.push(['', '', '', '', '', '', '', '', '初回支払額',   totals.firstPayment]);
+  data.push(['', '', '', '', '', '', '', '', '2回目以降月額', totals.recurring]);
+  data.push([]);
+  data.push(['※ 価格は全て税別表記です。']);
+  data.push(['※ 利用規約：' + COMPANY_INFO.kiyakuUrl]);
+
+  // 復元用メタ行（最終行）
+  data.push([]);
+  data.push([META_TAG, JSON.stringify(q)]);
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(data);
+
+  // 列幅を見やすく
+  ws['!cols'] = [
+    { wch: 6 }, { wch: 22 }, { wch: 28 }, { wch: 22 }, { wch: 6 },
+    { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 10 }, { wch: 14 },
+  ];
+
+  XLSX.utils.book_append_sheet(wb, ws, '見積書');
+
+  const safeCompany = (q.customerCompany || '無題').replace(/[\\/:*?"<>|]/g, '_');
+  const dateStr = q.issueDate || new Date().toISOString().slice(0, 10);
+  const filename = `見積書_${safeCompany}_${dateStr}.xlsx`;
+  XLSX.writeFile(wb, filename);
+  toast('Excelを出力しました', 'ok');
+}
+
+/* ===========================================================
+   EXCEL IMPORT
+   =========================================================== */
+async function importFromExcel(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf);
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+    const metaRow = rows.find(r => r && r[0] === META_TAG);
+    if (metaRow && metaRow[1]) {
+      try {
+        const quote = JSON.parse(metaRow[1]);
+        applyQuoteToForm(quote);
+        toast('Excelから復元しました', 'ok');
+      } catch (e) {
+        toast('メタデータの解析に失敗しました', 'error');
+      }
+    } else {
+      toast(`このExcelには復元用データ（${META_TAG}行）がありません`, 'error');
+    }
+  } catch (e) {
+    console.error(e);
+    toast('Excel読込に失敗：' + e.message, 'error');
+  } finally {
+    event.target.value = '';
+  }
+}
+
+/* ===========================================================
+   SHEET URL IMPORT
+   =========================================================== */
+function openSheetUrlModal() {
+  $('sheetUrlInput').value = '';
+  $('sheetUrlModal').classList.add('show');
+}
+function closeSheetUrlModal() {
+  $('sheetUrlModal').classList.remove('show');
+}
+
+async function importFromSheetUrl() {
+  const url = $('sheetUrlInput').value.trim();
+  if (!url) { toast('URLを入力してください', 'error'); return; }
+
+  // URLの種類に応じてCSVエンドポイントを構築
+  let csvUrl;
+  if (/\/d\/e\/[^/]+\/pub/.test(url)) {
+    // 「ウェブに公開」URL → output=csv を保証して使用
+    csvUrl = url.replace(/output=\w+/, 'output=csv');
+    if (!/output=csv/.test(csvUrl)) {
+      csvUrl += (csvUrl.includes('?') ? '&' : '?') + 'output=csv';
+    }
+  } else {
+    // 通常の /d/{ID}/edit?gid=... → export?format=csv に変換
+    // ※ file:// オリジンからは CORS で失敗します（Vercelデプロイ後なら動作の可能性あり）
+    const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    const gidMatch = url.match(/[#&?]gid=(\d+)/);
+    if (!m) { toast('スプレッドシートのURL形式が正しくありません', 'error'); return; }
+    const sheetId = m[1];
+    const gid = gidMatch ? gidMatch[1] : '0';
+    csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
+  }
+  try {
+    const res = await fetch(csvUrl, { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status + ' / 公開設定をご確認ください');
+    const csv = await res.text();
+    const rows = parseCSV(csv);
+    const metaRow = rows.find(r => r && r[0] === META_TAG);
+    if (metaRow && metaRow[1]) {
+      const quote = JSON.parse(metaRow[1]);
+      applyQuoteToForm(quote);
+      closeSheetUrlModal();
+      toast('スプシから復元しました', 'ok');
+    } else {
+      toast(`このスプシには復元用データ（${META_TAG}行）がありません`, 'error');
+    }
+  } catch (e) {
+    console.error(e);
+    toast('スプシ読込に失敗：' + e.message, 'error');
+  }
+}
+
+/* ===========================================================
+   APPLY QUOTE TO FORM
+   =========================================================== */
+function applyQuoteToForm(q) {
+  const set = (id, v) => { if ($(id)) $(id).value = v != null ? v : ''; };
+  set('issueDate',            q.issueDate);
+  set('validUntil',           q.validUntil);
+  set('customerCompany',      q.customerCompany);
+  set('customerAddress',      q.customerAddress);
+  set('customerTitle',        q.customerTitle);
+  set('customerName',         q.customerName);
+  set('signFormat',           q.signFormat);
+  set('supportStartMonth',    q.supportStartMonth);
+  set('contractStartDate',    q.contractStartDate);
+  set('contractMonths',       q.contractMonths);
+  set('contractEndDate',      q.contractEndDate);
+  set('paymentCount',         q.paymentCount);
+  set('firstPaymentDue',      q.firstPaymentDue);
+  set('recurringPaymentTerm', q.recurringPaymentTerm);
+  set('salesPerson',          q.salesPerson);
+  set('agencyName',           q.agencyName);
+  set('totalDiscount',        q.totalDiscount || 0);
+
+  // アイテム状態を復元
+  ITEM_STATE = {};
+  if (Array.isArray(q.items)) {
+    q.items.forEach(it => {
+      ITEM_STATE[it.productId] = {
+        checked: true,
+        qty: it.quantity,
+        initialFee: it.initialFee,
+        monthlyFee: it.monthlyFee,
+        yearlyFee:  it.yearlyFee,
+        discount:   it.discount,
+      };
+    });
+  }
+
+  // マスタが未読込ならまだ描画できないので、読込後に再描画
+  if (MASTER_PRODUCTS.length) renderServiceList();
+  updateEndDate();
+  recalc();
+  showTab('form');
+}
+
+/* ===========================================================
+   CLEAR
+   =========================================================== */
+function clearForm() {
+  if (!confirm('入力内容をすべてクリアします。よろしいですか？')) return;
+  ['issueDate','validUntil','customerCompany','customerAddress','customerTitle',
+   'customerName','signFormat','supportStartMonth','contractStartDate',
+   'contractEndDate','firstPaymentDue','salesPerson','agencyName'
+  ].forEach(id => { if ($(id)) $(id).value = ''; });
+  $('contractMonths').value = 12;
+  $('paymentCount').value = 12;
+  $('recurringPaymentTerm').value = '利用月の当月末支払（土日祝の場合は前営業日）';
+  $('totalDiscount').value = 0;
+  ITEM_STATE = {};
+  setDefaultDates();
+  renderServiceList();
+  toast('クリアしました', 'ok');
+}
+
+/* ===========================================================
+   DEFAULTS
+   =========================================================== */
+function setDefaultDates() {
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+  if (!$('issueDate').value) $('issueDate').value = todayStr;
+
+  // 有効期限：1週間後
+  if (!$('validUntil').value) {
+    const v = new Date(today);
+    v.setDate(v.getDate() + 7);
+    $('validUntil').value = v.toISOString().slice(0, 10);
+  }
+}
+
+/* ===========================================================
+   INIT
+   =========================================================== */
+function bindFormEvents() {
+  // 契約終了日 自動計算
+  ['contractStartDate', 'contractMonths'].forEach(id => {
+    $(id).addEventListener('input', () => { updateEndDate(); recalc(); });
+  });
+  // recalcに影響するinputもまとめてバインド（その他は個別に）
+  ['totalDiscount'].forEach(id => $(id).addEventListener('input', recalc));
+
+  // モーダル外クリックで閉じる
+  $('sheetUrlModal').addEventListener('click', (e) => {
+    if (e.target.id === 'sheetUrlModal') closeSheetUrlModal();
+  });
+}
+
+async function init() {
+  setDefaultDates();
+  bindFormEvents();
+  updateEndDate();
+  await loadMaster();
+}
+
+init();
+</script>
+</body>
+</html>
