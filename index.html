@@ -233,6 +233,87 @@ input, select, textarea {
 .master-status .ok { color: #10b981; }
 .master-status .err { color: #ef4444; }
 
+/* 自由追記（カスタム）行 */
+.custom-list {
+  border: 1px dashed #9ca3af;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fafbfd;
+}
+.custom-row {
+  display: grid;
+  grid-template-columns: 36px minmax(180px, 1.4fr) 90px 110px 110px 110px 90px 110px;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #f1f3f6;
+  align-items: start;
+  font-size: 13px;
+}
+.custom-row:last-child { border-bottom: none; }
+.custom-row.header {
+  background: #f1f5f9;
+  font-size: 11px;
+  font-weight: 700;
+  color: #4b5563;
+  letter-spacing: 0.2px;
+  align-items: center;
+}
+.custom-row input[type="number"], .custom-row input[type="text"], .custom-row textarea {
+  padding: 5px 7px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 12px;
+  width: 100%;
+  font-family: inherit;
+}
+.custom-row input[type="number"] { text-align: right; }
+.custom-row .name-block { display: flex; flex-direction: column; gap: 4px; }
+.custom-row .name-block input { font-weight: 600; }
+.custom-row .name-block textarea { resize: vertical; min-height: 38px; font-size: 11px; color: #4b5563; }
+.custom-row .remove-btn {
+  border: none;
+  background: #fee2e2;
+  color: #b91c1c;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+}
+.custom-row .remove-btn:hover { background: #fecaca; }
+.custom-row .subtotal {
+  font-weight: 700;
+  color: #1e3a5f;
+  text-align: right;
+  padding-top: 4px;
+}
+.add-custom-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #1e3a5f;
+  color: #fff;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 12px;
+  margin-top: 10px;
+}
+.add-custom-btn:hover { background: #2c5282; transform: translateY(-1px); }
+.custom-empty {
+  padding: 20px;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 12px;
+}
+
 /* ========================================
    SUMMARY
    ======================================== */
@@ -340,12 +421,15 @@ input, select, textarea {
   width: 100%;
   border-collapse: collapse;
   margin-top: 4px;
+  table-layout: fixed;
 }
 .pv-items th, .pv-items td {
   border: 1px solid #d1d5db;
-  padding: 6px 8px;
+  padding: 8px 10px;
   font-size: 11px;
   vertical-align: top;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 .pv-items th {
   background: #1e3a5f;
@@ -355,8 +439,117 @@ input, select, textarea {
 }
 .pv-items td.num { text-align: right; }
 .pv-items td.ctr { text-align: center; }
-.pv-items .item-name { font-weight: 600; }
-.pv-items .item-desc { font-size: 10px; color: #6b7280; margin-top: 2px; }
+.pv-items .item-name { font-weight: 700; font-size: 12px; }
+.pv-items .item-desc { font-size: 10px; color: #6b7280; margin-top: 4px; line-height: 1.5; }
+
+/* 施策対象テーブル */
+.pv-target {
+  width: 100%;
+  border-collapse: collapse;
+}
+.pv-target td {
+  border: 1px solid #d1d5db;
+  padding: 6px 10px;
+  font-size: 11px;
+  vertical-align: middle;
+}
+.pv-target td.cat {
+  background: #4b5563;
+  color: #fff;
+  width: 80px;
+  text-align: center;
+  font-weight: 700;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+.pv-target td.h {
+  background: #e5e7eb;
+  font-weight: 600;
+  width: 160px;
+  text-align: center;
+}
+.pv-target td.v { background: #fff; }
+.pv-target td.v a { color: #2c5282; word-break: break-all; }
+.pv-target td.empty { color: #cbd5e0; }
+
+/* 契約者情報テーブル */
+.pv-contract {
+  width: 100%;
+  border-collapse: collapse;
+}
+.pv-contract td {
+  border: 1px solid #d1d5db;
+  padding: 6px 10px;
+  font-size: 11px;
+}
+.pv-contract td.cat {
+  background: #4b5563;
+  color: #fff;
+  width: 80px;
+  text-align: center;
+  font-weight: 700;
+}
+.pv-contract td.h {
+  background: #e5e7eb;
+  font-weight: 600;
+  width: 110px;
+  text-align: center;
+}
+.pv-contract td.sub-h {
+  background: #f3f5f9;
+  font-weight: 600;
+  width: 50px;
+  text-align: center;
+}
+
+/* 押印エリア */
+.pv-signs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-top: 18px;
+}
+.pv-sign-box {
+  border: 1.5px solid #1e3a5f;
+  border-radius: 4px;
+  padding: 12px;
+  position: relative;
+  min-height: 130px;
+  background: #fdfdfd;
+}
+.pv-sign-box .sign-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #1e3a5f;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 4px;
+  margin-bottom: 8px;
+}
+.pv-sign-box .sign-line {
+  display: flex;
+  align-items: baseline;
+  font-size: 11px;
+  margin-top: 4px;
+  gap: 6px;
+}
+.pv-sign-box .sign-line .lbl { font-weight: 600; min-width: 36px; }
+.pv-sign-box .sign-line .val { flex: 1; border-bottom: 1px solid #d1d5db; min-height: 16px; padding-left: 4px; }
+.pv-sign-box .seal {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  width: 64px;
+  height: 64px;
+  border: 2px dashed #cbd5e0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  font-size: 9px;
+  text-align: center;
+  line-height: 1.2;
+}
 
 .pv-totals {
   margin-top: 14px;
@@ -619,6 +812,45 @@ input, select, textarea {
       </div>
     </section>
 
+    <!-- 施策対象 -->
+    <section class="section">
+      <h3>🎯 施策対象 <span class="note">SEO/MEO/PR等の施策を行う「対象店舗・対象サイト」の情報</span></h3>
+      <div class="grid">
+        <div class="f col-2">
+          <label class="req">名称（店舗名または会社名）</label>
+          <input type="text" id="targetName" placeholder="例：○○○○店 / 株式会社○○○○">
+        </div>
+        <div class="f"></div>
+
+        <div class="f col-full">
+          <label class="req">住所</label>
+          <input type="text" id="targetAddress" placeholder="例：愛知県名古屋市○○区○○ 1-2-3 ○○ビル 1F">
+        </div>
+
+        <div class="f col-2">
+          <label>HP URL</label>
+          <input type="url" id="targetWebsite" placeholder="https://example.com">
+        </div>
+        <div class="f"></div>
+
+        <div class="f col-2">
+          <label>Google マップ URL</label>
+          <input type="url" id="targetGoogleMap" placeholder="https://maps.app.goo.gl/...">
+        </div>
+        <div class="f"></div>
+
+        <div class="f">
+          <label>Facebook URL</label>
+          <input type="url" id="targetFacebook" placeholder="https://www.facebook.com/...">
+        </div>
+        <div class="f">
+          <label>Instagram URL</label>
+          <input type="url" id="targetInstagram" placeholder="https://www.instagram.com/...">
+        </div>
+        <div class="f"></div>
+      </div>
+    </section>
+
     <!-- サービス選択 -->
     <section class="section">
       <h3>
@@ -631,6 +863,18 @@ input, select, textarea {
       <div style="margin-top:10px; font-size:11px; color:#6b7280;">
         ※ 商品マスタはGoogle Sheetで管理されています。サービス内容や金額の追加・変更はスプシで行ってください。
         変更後は右上の「🔄 マスター」ボタンを押すと最新版が読み込まれます。
+      </div>
+    </section>
+
+    <!-- 自由追記（カスタム項目） -->
+    <section class="section">
+      <h3>✏️ 自由追記 <span class="note">マスタにない案件固有のサービスを手入力で追加できます</span></h3>
+      <div class="custom-list" id="customList">
+        <!-- custom rows injected here -->
+      </div>
+      <button type="button" class="add-custom-btn" onclick="addCustomItem()">＋ 行を追加</button>
+      <div style="margin-top:8px; font-size:11px; color:#6b7280;">
+        ※ ここで入力した内容も集計・プレビュー・PDF・Excel出力に反映されます。
       </div>
     </section>
 
@@ -735,6 +979,8 @@ const META_TAG = '__QUOTE_META__'; // Excel復元用のマーカー文字列
    =========================================================== */
 let MASTER_PRODUCTS = []; // 商品マスタ（マスター読込で取得）
 let ITEM_STATE      = {}; // productId -> { checked, qty, initialFee, monthlyFee, yearlyFee, discount }
+let CUSTOM_ITEMS    = []; // 自由追記項目 [{ id, name, content, quantity, initialFee, monthlyFee, yearlyFee, discount }, ...]
+let CUSTOM_SEQ      = 0;  // カスタム項目ID採番用
 
 /* ===========================================================
    UTILITIES
@@ -974,6 +1220,85 @@ function escapeHtml(s) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+/* ===========================================================
+   CUSTOM ITEMS (自由追記)
+   =========================================================== */
+function renderCustomList() {
+  const list = $('customList');
+  if (!CUSTOM_ITEMS.length) {
+    list.innerHTML = '<div class="custom-empty">「＋ 行を追加」ボタンで案件固有のサービスを追加できます</div>';
+    recalc();
+    return;
+  }
+
+  let html = `
+    <div class="custom-row header">
+      <div></div>
+      <div>サービス名 / 内容</div>
+      <div style="text-align:center">数量</div>
+      <div style="text-align:center">初期費用</div>
+      <div style="text-align:center">月額</div>
+      <div style="text-align:center">年額</div>
+      <div style="text-align:center">値引き</div>
+      <div style="text-align:right">小計</div>
+    </div>
+  `;
+
+  CUSTOM_ITEMS.forEach(c => {
+    html += `
+      <div class="custom-row" data-cid="${c.id}">
+        <div><button type="button" class="remove-btn" onclick="removeCustomItem('${c.id}')" title="この行を削除">×</button></div>
+        <div class="name-block">
+          <input type="text" placeholder="サービス名（必須）" value="${escapeHtml(c.name || '')}" oninput="onCustomItemChange('${c.id}', 'name', this.value)">
+          <textarea placeholder="内容・備考（任意）" oninput="onCustomItemChange('${c.id}', 'content', this.value)">${escapeHtml(c.content || '')}</textarea>
+        </div>
+        <div><input type="number" min="0" step="0.1" value="${c.quantity != null ? c.quantity : 1}" oninput="onCustomItemChange('${c.id}', 'quantity', this.value)"></div>
+        <div><input type="number" min="0" placeholder="0" value="${c.initialFee != null ? c.initialFee : ''}" oninput="onCustomItemChange('${c.id}', 'initialFee', this.value)"></div>
+        <div><input type="number" min="0" placeholder="0" value="${c.monthlyFee != null ? c.monthlyFee : ''}" oninput="onCustomItemChange('${c.id}', 'monthlyFee', this.value)"></div>
+        <div><input type="number" min="0" placeholder="0" value="${c.yearlyFee  != null ? c.yearlyFee  : ''}" oninput="onCustomItemChange('${c.id}', 'yearlyFee',  this.value)"></div>
+        <div><input type="number" min="0" value="${c.discount || 0}" oninput="onCustomItemChange('${c.id}', 'discount', this.value)"></div>
+        <div class="subtotal" id="custom-subtotal-${c.id}">¥0</div>
+      </div>
+    `;
+  });
+
+  list.innerHTML = html;
+  recalc();
+}
+
+function addCustomItem() {
+  CUSTOM_SEQ++;
+  CUSTOM_ITEMS.push({
+    id: 'C' + CUSTOM_SEQ,
+    name: '',
+    content: '',
+    quantity: 1,
+    initialFee: null,
+    monthlyFee: null,
+    yearlyFee: null,
+    discount: 0,
+  });
+  renderCustomList();
+}
+
+function removeCustomItem(cid) {
+  CUSTOM_ITEMS = CUSTOM_ITEMS.filter(c => c.id !== cid);
+  renderCustomList();
+}
+
+function onCustomItemChange(cid, key, val) {
+  const c = CUSTOM_ITEMS.find(x => x.id === cid);
+  if (!c) return;
+  if (key === 'name' || key === 'content') {
+    c[key] = val;
+  } else if (key === 'quantity') {
+    c.quantity = parseFloat(val) || 0;
+  } else {
+    c[key] = parseNumber(val);
+  }
+  recalc();
+}
+
 function onItemChange(pid, key, val) {
   if (!ITEM_STATE[pid]) ITEM_STATE[pid] = {};
   if (key === 'checked') {
@@ -992,12 +1317,13 @@ function onItemChange(pid, key, val) {
    CALCULATION
    =========================================================== */
 function getSelectedItems() {
-  return MASTER_PRODUCTS
+  const fromMaster = MASTER_PRODUCTS
     .filter(p => ITEM_STATE[p.id] && ITEM_STATE[p.id].checked)
     .map(p => {
       const s = ITEM_STATE[p.id];
       return {
         productId: p.id,
+        isCustom: false,
         productName: p.name,
         content: p.content,
         note: p.note,
@@ -1008,6 +1334,22 @@ function getSelectedItems() {
         discount:  s.discount  != null ? s.discount  : 0,
       };
     });
+  // 自由追記項目（名前か金額が入っているもののみ集計対象）
+  const fromCustom = CUSTOM_ITEMS
+    .filter(c => (c.name && c.name.trim()) || c.initialFee || c.monthlyFee || c.yearlyFee)
+    .map(c => ({
+      productId: c.id,
+      isCustom: true,
+      productName: c.name || '(名称未入力)',
+      content: c.content || '',
+      note: '',
+      quantity: c.quantity != null ? c.quantity : 1,
+      initialFee: c.initialFee,
+      monthlyFee: c.monthlyFee,
+      yearlyFee:  c.yearlyFee,
+      discount:   c.discount || 0,
+    }));
+  return [...fromMaster, ...fromCustom];
 }
 
 function calcSubtotal(item) {
@@ -1031,17 +1373,24 @@ function recalc() {
     itemDiscountTotal += (it.discount || 0);
   });
 
-  // 各行の小計を更新
+  // 各行の小計を更新（マスタ）
   MASTER_PRODUCTS.forEach(p => {
     const cell = $('subtotal-' + p.id);
     if (!cell) return;
     const st = ITEM_STATE[p.id];
     if (st && st.checked) {
-      const s = items.find(x => x.productId === p.id);
+      const s = items.find(x => x.productId === p.id && !x.isCustom);
       cell.textContent = s ? fmtYen(calcSubtotal(s)) : '¥0';
     } else {
       cell.textContent = '¥0';
     }
+  });
+  // 各行の小計を更新（カスタム）
+  CUSTOM_ITEMS.forEach(c => {
+    const cell = $('custom-subtotal-' + c.id);
+    if (!cell) return;
+    const s = items.find(x => x.productId === c.id && x.isCustom);
+    cell.textContent = s ? fmtYen(calcSubtotal(s)) : '¥0';
   });
 
   const months = Math.max(1, parseInt($('contractMonths').value, 10) || 1);
@@ -1082,6 +1431,12 @@ function collectQuoteData() {
     customerTitle:       $('customerTitle').value,
     customerName:        $('customerName').value,
     signFormat:          $('signFormat').value,
+    targetName:          $('targetName').value,
+    targetAddress:       $('targetAddress').value,
+    targetWebsite:       $('targetWebsite').value,
+    targetGoogleMap:     $('targetGoogleMap').value,
+    targetFacebook:      $('targetFacebook').value,
+    targetInstagram:     $('targetInstagram').value,
     supportStartMonth:   $('supportStartMonth').value,
     contractStartDate:   $('contractStartDate').value,
     contractMonths:      parseInt($('contractMonths').value, 10) || 12,
@@ -1094,6 +1449,7 @@ function collectQuoteData() {
     totalDiscount:       parseFloat($('totalDiscount').value) || 0,
 
     items: items,
+    customItems: CUSTOM_ITEMS,
   };
 }
 
@@ -1165,12 +1521,61 @@ function renderPreview() {
     </div>
 
     <div class="pv-section">
-      <h4>契約情報</h4>
-      <table class="pv-info-table">
+      <h4>施策対象</h4>
+      <table class="pv-target">
         <tr>
-          <td class="h">顧客所在地</td><td>${escapeHtml(q.customerAddress) || ''}</td>
-          <td class="h">役職／代表者</td><td>${escapeHtml(q.customerTitle) || ''} ${escapeHtml(q.customerName) || ''}</td>
+          <td class="cat" rowspan="6">施策<br>対象</td>
+          <td class="h">名称<br><span style="font-size:9px; color:#6b7280;">（店舗名または会社名）</span></td>
+          <td class="v">${escapeHtml(q.targetName) || '<span class="empty">ここに名称を記載</span>'}</td>
         </tr>
+        <tr>
+          <td class="h">住所</td>
+          <td class="v">${escapeHtml(q.targetAddress) || '<span class="empty">ここに対象住所を記載</span>'}</td>
+        </tr>
+        <tr>
+          <td class="h">HP URL</td>
+          <td class="v">${q.targetWebsite ? `<a href="${escapeHtml(q.targetWebsite)}" target="_blank">${escapeHtml(q.targetWebsite)}</a>` : '<span class="empty">ここに対象URLを記載</span>'}</td>
+        </tr>
+        <tr>
+          <td class="h">Google マップ URL</td>
+          <td class="v">${q.targetGoogleMap ? `<a href="${escapeHtml(q.targetGoogleMap)}" target="_blank">${escapeHtml(q.targetGoogleMap)}</a>` : '<span class="empty">ここに対象URLを記載</span>'}</td>
+        </tr>
+        <tr>
+          <td class="h">Facebook</td>
+          <td class="v">${q.targetFacebook ? `<a href="${escapeHtml(q.targetFacebook)}" target="_blank">${escapeHtml(q.targetFacebook)}</a>` : '<span class="empty">ここにFacebookのURLを記載</span>'}</td>
+        </tr>
+        <tr>
+          <td class="h">Instagram</td>
+          <td class="v">${q.targetInstagram ? `<a href="${escapeHtml(q.targetInstagram)}" target="_blank">${escapeHtml(q.targetInstagram)}</a>` : '<span class="empty">ここにInstagramのURLを記載</span>'}</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="pv-section">
+      <h4>契約者情報</h4>
+      <table class="pv-contract">
+        <tr>
+          <td class="cat" rowspan="3">契約者<br>情報</td>
+          <td class="h" colspan="2">企業名</td>
+          <td colspan="3">${escapeHtml(q.customerCompany) || ''}</td>
+        </tr>
+        <tr>
+          <td class="h" colspan="2">所在地</td>
+          <td colspan="3">${escapeHtml(q.customerAddress) || ''}</td>
+        </tr>
+        <tr>
+          <td class="h" colspan="2">代表者</td>
+          <td class="sub-h">役職</td>
+          <td>${escapeHtml(q.customerTitle) || ''}</td>
+          <td class="sub-h">氏名</td>
+          <td>${escapeHtml(q.customerName) || ''}</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="pv-section">
+      <h4>契約条件</h4>
+      <table class="pv-info-table">
         <tr>
           <td class="h">支援開始月</td><td>${escapeHtml(q.supportStartMonth) || ''}</td>
           <td class="h">契約形式</td><td>${escapeHtml(q.signFormat) || ''}</td>
@@ -1196,14 +1601,14 @@ function renderPreview() {
       <table class="pv-items">
         <thead>
           <tr>
-            <th style="width:32px">#</th>
-            <th>サービス名 / 内容</th>
-            <th style="width:48px">数量</th>
-            <th style="width:90px">初期費用</th>
-            <th style="width:90px">月額</th>
-            <th style="width:90px">年額</th>
-            <th style="width:80px">値引き</th>
-            <th style="width:100px">小計</th>
+            <th style="width:28px">#</th>
+            <th style="width:38%">サービス名 / 内容</th>
+            <th style="width:42px">数量</th>
+            <th style="width:78px">初期費用</th>
+            <th style="width:78px">月額</th>
+            <th style="width:84px">年額</th>
+            <th style="width:64px">値引き</th>
+            <th style="width:90px">小計</th>
           </tr>
         </thead>
         <tbody>${itemRows}</tbody>
@@ -1221,6 +1626,32 @@ function renderPreview() {
         <tr><td class="h">初回支払額</td><td class="num">${fmtYen(totals.firstPayment)}</td></tr>
         <tr><td class="h">2回目以降月額</td><td class="num">${fmtYen(totals.recurring)}</td></tr>
       </table>
+    </div>
+
+    <div class="pv-section">
+      <h4>申込・押印欄</h4>
+      <div style="font-size:10px; color:#6b7280; margin-bottom:6px;">
+        本見積書の内容に同意のうえ、お申込みいただける場合は下記にご署名・ご捺印ください。
+        ${q.signFormat ? `（契約形式：<strong>${escapeHtml(q.signFormat)}</strong>）` : ''}
+      </div>
+      <div class="pv-signs">
+        <div class="pv-sign-box">
+          <div class="sign-title">受注者（株式会社ナレッジマーケティング）</div>
+          <div class="sign-line"><span class="lbl">会社</span><span class="val">${escapeHtml(COMPANY_INFO.name)}</span></div>
+          <div class="sign-line"><span class="lbl">所在地</span><span class="val">${escapeHtml(COMPANY_INFO.address)}</span></div>
+          <div class="sign-line"><span class="lbl">担当</span><span class="val">${escapeHtml(q.salesPerson) || ''}</span></div>
+          <div class="sign-line"><span class="lbl">日付</span><span class="val">${fmtDateJP(q.issueDate) || ''}</span></div>
+          <div class="seal">印</div>
+        </div>
+        <div class="pv-sign-box">
+          <div class="sign-title">発注者（お客様）</div>
+          <div class="sign-line"><span class="lbl">会社</span><span class="val">${escapeHtml(q.customerCompany) || ''}</span></div>
+          <div class="sign-line"><span class="lbl">所在地</span><span class="val">${escapeHtml(q.customerAddress) || ''}</span></div>
+          <div class="sign-line"><span class="lbl">代表</span><span class="val">${escapeHtml(q.customerTitle) || ''} ${escapeHtml(q.customerName) || ''}</span></div>
+          <div class="sign-line"><span class="lbl">日付</span><span class="val">&nbsp;</span></div>
+          <div class="seal">印</div>
+        </div>
+      </div>
     </div>
 
     <div class="pv-footer">
@@ -1265,8 +1696,20 @@ function exportToExcel() {
   data.push(['', COMPANY_INFO.postalCode + ' ' + COMPANY_INFO.address]);
   if (q.salesPerson) data.push(['担当', q.salesPerson]);
   data.push([]);
-  data.push(['【契約情報】']);
-  data.push(['顧客所在地', q.customerAddress, '', '', '役職／代表者', (q.customerTitle || '') + ' ' + (q.customerName || '')]);
+  data.push(['【施策対象】']);
+  data.push(['名称', q.targetName]);
+  data.push(['住所', q.targetAddress]);
+  data.push(['HP URL', q.targetWebsite]);
+  data.push(['Google マップ URL', q.targetGoogleMap]);
+  data.push(['Facebook', q.targetFacebook]);
+  data.push(['Instagram', q.targetInstagram]);
+  data.push([]);
+  data.push(['【契約者情報】']);
+  data.push(['企業名', q.customerCompany]);
+  data.push(['所在地', q.customerAddress]);
+  data.push(['代表者役職', q.customerTitle, '代表者氏名', q.customerName]);
+  data.push([]);
+  data.push(['【契約条件】']);
   data.push(['支援開始月', q.supportStartMonth, '', '', '契約形式', q.signFormat]);
   data.push(['契約開始日', q.contractStartDate, '', '', '契約期間', q.contractMonths ? q.contractMonths + 'ヶ月' : '']);
   data.push(['契約終了日', q.contractEndDate, '', '', '支払回数', q.paymentCount != null ? q.paymentCount + '回' : '']);
@@ -1309,7 +1752,6 @@ function exportToExcel() {
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet(data);
 
-  // 列幅を見やすく
   ws['!cols'] = [
     { wch: 6 }, { wch: 22 }, { wch: 28 }, { wch: 22 }, { wch: 6 },
     { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 10 }, { wch: 14 },
@@ -1370,17 +1812,13 @@ async function importFromSheetUrl() {
   const url = $('sheetUrlInput').value.trim();
   if (!url) { toast('URLを入力してください', 'error'); return; }
 
-  // URLの種類に応じてCSVエンドポイントを構築
   let csvUrl;
   if (/\/d\/e\/[^/]+\/pub/.test(url)) {
-    // 「ウェブに公開」URL → output=csv を保証して使用
     csvUrl = url.replace(/output=\w+/, 'output=csv');
     if (!/output=csv/.test(csvUrl)) {
       csvUrl += (csvUrl.includes('?') ? '&' : '?') + 'output=csv';
     }
   } else {
-    // 通常の /d/{ID}/edit?gid=... → export?format=csv に変換
-    // ※ file:// オリジンからは CORS で失敗します（Vercelデプロイ後なら動作の可能性あり）
     const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
     const gidMatch = url.match(/[#&?]gid=(\d+)/);
     if (!m) { toast('スプレッドシートのURL形式が正しくありません', 'error'); return; }
@@ -1420,6 +1858,12 @@ function applyQuoteToForm(q) {
   set('customerTitle',        q.customerTitle);
   set('customerName',         q.customerName);
   set('signFormat',           q.signFormat);
+  set('targetName',           q.targetName);
+  set('targetAddress',        q.targetAddress);
+  set('targetWebsite',        q.targetWebsite);
+  set('targetGoogleMap',      q.targetGoogleMap);
+  set('targetFacebook',       q.targetFacebook);
+  set('targetInstagram',      q.targetInstagram);
   set('supportStartMonth',    q.supportStartMonth);
   set('contractStartDate',    q.contractStartDate);
   set('contractMonths',       q.contractMonths);
@@ -1431,10 +1875,10 @@ function applyQuoteToForm(q) {
   set('agencyName',           q.agencyName);
   set('totalDiscount',        q.totalDiscount || 0);
 
-  // アイテム状態を復元
   ITEM_STATE = {};
   if (Array.isArray(q.items)) {
     q.items.forEach(it => {
+      if (it.isCustom) return;
       ITEM_STATE[it.productId] = {
         checked: true,
         qty: it.quantity,
@@ -1446,8 +1890,41 @@ function applyQuoteToForm(q) {
     });
   }
 
-  // マスタが未読込ならまだ描画できないので、読込後に再描画
+  CUSTOM_ITEMS = [];
+  CUSTOM_SEQ = 0;
+  if (Array.isArray(q.customItems)) {
+    q.customItems.forEach(c => {
+      const m = String(c.id || '').match(/^C(\d+)$/);
+      if (m) CUSTOM_SEQ = Math.max(CUSTOM_SEQ, parseInt(m[1], 10));
+      CUSTOM_ITEMS.push({
+        id: c.id || ('C' + (++CUSTOM_SEQ)),
+        name: c.name || '',
+        content: c.content || '',
+        quantity: c.quantity != null ? c.quantity : 1,
+        initialFee: c.initialFee != null ? c.initialFee : null,
+        monthlyFee: c.monthlyFee != null ? c.monthlyFee : null,
+        yearlyFee:  c.yearlyFee  != null ? c.yearlyFee  : null,
+        discount:   c.discount || 0,
+      });
+    });
+  } else if (Array.isArray(q.items)) {
+    q.items.filter(it => it.isCustom).forEach(it => {
+      CUSTOM_SEQ++;
+      CUSTOM_ITEMS.push({
+        id: 'C' + CUSTOM_SEQ,
+        name: it.productName || '',
+        content: it.content || '',
+        quantity: it.quantity != null ? it.quantity : 1,
+        initialFee: it.initialFee != null ? it.initialFee : null,
+        monthlyFee: it.monthlyFee != null ? it.monthlyFee : null,
+        yearlyFee:  it.yearlyFee  != null ? it.yearlyFee  : null,
+        discount:   it.discount || 0,
+      });
+    });
+  }
+
   if (MASTER_PRODUCTS.length) renderServiceList();
+  renderCustomList();
   updateEndDate();
   recalc();
   showTab('form');
@@ -1460,15 +1937,20 @@ function clearForm() {
   if (!confirm('入力内容をすべてクリアします。よろしいですか？')) return;
   ['issueDate','validUntil','customerCompany','customerAddress','customerTitle',
    'customerName','signFormat','supportStartMonth','contractStartDate',
-   'contractEndDate','firstPaymentDue','salesPerson','agencyName'
+   'contractEndDate','firstPaymentDue','salesPerson','agencyName',
+   'targetName','targetAddress','targetWebsite','targetGoogleMap',
+   'targetFacebook','targetInstagram'
   ].forEach(id => { if ($(id)) $(id).value = ''; });
   $('contractMonths').value = 12;
   $('paymentCount').value = 12;
   $('recurringPaymentTerm').value = '利用月の当月末支払（土日祝の場合は前営業日）';
   $('totalDiscount').value = 0;
   ITEM_STATE = {};
+  CUSTOM_ITEMS = [];
+  CUSTOM_SEQ = 0;
   setDefaultDates();
   renderServiceList();
+  renderCustomList();
   toast('クリアしました', 'ok');
 }
 
@@ -1480,7 +1962,6 @@ function setDefaultDates() {
   const todayStr = today.toISOString().slice(0, 10);
   if (!$('issueDate').value) $('issueDate').value = todayStr;
 
-  // 有効期限：1週間後
   if (!$('validUntil').value) {
     const v = new Date(today);
     v.setDate(v.getDate() + 7);
@@ -1492,14 +1973,11 @@ function setDefaultDates() {
    INIT
    =========================================================== */
 function bindFormEvents() {
-  // 契約終了日 自動計算
   ['contractStartDate', 'contractMonths'].forEach(id => {
     $(id).addEventListener('input', () => { updateEndDate(); recalc(); });
   });
-  // recalcに影響するinputもまとめてバインド（その他は個別に）
   ['totalDiscount'].forEach(id => $(id).addEventListener('input', recalc));
 
-  // モーダル外クリックで閉じる
   $('sheetUrlModal').addEventListener('click', (e) => {
     if (e.target.id === 'sheetUrlModal') closeSheetUrlModal();
   });
@@ -1509,6 +1987,7 @@ async function init() {
   setDefaultDates();
   bindFormEvents();
   updateEndDate();
+  renderCustomList();
   await loadMaster();
 }
 
