@@ -1510,11 +1510,26 @@ function renderPreview() {
     </div>
 
 
+    ${(() => {
+      const urlRows = [
+        { label: 'HP URL',            val: q.targetWebsite   },
+        { label: 'Google マップ URL', val: q.targetGoogleMap },
+        { label: 'Facebook',          val: q.targetFacebook  },
+        { label: 'Instagram',         val: q.targetInstagram },
+      ].filter(r => r.val && r.val.trim());
+      const totalRows = 2 + urlRows.length; // 名称 + 住所 + URL行
+      const urlRowsHtml = urlRows.map(r => `
+        <tr>
+          <td class="h">${r.label}</td>
+          <td class="v"><a href="${escapeHtml(r.val)}" target="_blank">${escapeHtml(r.val)}</a></td>
+        </tr>
+      `).join('');
+      return `
     <div class="pv-section">
       <h4>施策対象</h4>
       <table class="pv-target">
         <tr>
-          <td class="cat" rowspan="6">施策<br>対象</td>
+          <td class="cat" rowspan="${totalRows}">施策<br>対象</td>
           <td class="h">名称<br><span style="font-size:9px; color:#6b7280;">（店舗名または会社名）</span></td>
           <td class="v">${escapeHtml(q.targetName) || ''}</td>
         </tr>
@@ -1522,24 +1537,11 @@ function renderPreview() {
           <td class="h">住所</td>
           <td class="v">${escapeHtml(q.targetAddress) || ''}</td>
         </tr>
-        <tr>
-          <td class="h">HP URL</td>
-          <td class="v">${q.targetWebsite ? `<a href="${escapeHtml(q.targetWebsite)}" target="_blank">${escapeHtml(q.targetWebsite)}</a>` : ''}</td>
-        </tr>
-        <tr>
-          <td class="h">Google マップ URL</td>
-          <td class="v">${q.targetGoogleMap ? `<a href="${escapeHtml(q.targetGoogleMap)}" target="_blank">${escapeHtml(q.targetGoogleMap)}</a>` : ''}</td>
-        </tr>
-        <tr>
-          <td class="h">Facebook</td>
-          <td class="v">${q.targetFacebook ? `<a href="${escapeHtml(q.targetFacebook)}" target="_blank">${escapeHtml(q.targetFacebook)}</a>` : ''}</td>
-        </tr>
-        <tr>
-          <td class="h">Instagram</td>
-          <td class="v">${q.targetInstagram ? `<a href="${escapeHtml(q.targetInstagram)}" target="_blank">${escapeHtml(q.targetInstagram)}</a>` : ''}</td>
-        </tr>
+        ${urlRowsHtml}
       </table>
     </div>
+      `;
+    })()}
 
     <div class="pv-section">
       <h4>契約者情報</h4>
