@@ -505,9 +505,10 @@ input, select, textarea {
 /* 押印エリア */
 .pv-signs {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(280px, 60%);
   gap: 18px;
   margin-top: 18px;
+  justify-content: flex-end;
 }
 .pv-sign-box {
   border: 1.5px solid #1e3a5f;
@@ -738,11 +739,6 @@ input, select, textarea {
           <label>見積有効期限</label>
           <input type="date" id="validUntil">
         </div>
-        <div class="f">
-          <label>支援開始月</label>
-          <input type="month" id="supportStartMonth">
-        </div>
-
         <div class="f col-2">
           <label class="req">顧客会社名</label>
           <input type="text" id="customerCompany" placeholder="例：株式会社○○○○">
@@ -1437,7 +1433,6 @@ function collectQuoteData() {
     targetGoogleMap:     $('targetGoogleMap').value,
     targetFacebook:      $('targetFacebook').value,
     targetInstagram:     $('targetInstagram').value,
-    supportStartMonth:   $('supportStartMonth').value,
     contractStartDate:   $('contractStartDate').value,
     contractMonths:      parseInt($('contractMonths').value, 10) || 12,
     contractEndDate:     $('contractEndDate').value,
@@ -1499,6 +1494,7 @@ function renderPreview() {
     <div class="pv-meta">
       <div class="pv-customer">
         <div class="company">${escapeHtml(q.customerCompany || '＿＿＿＿＿＿＿＿')} 御中</div>
+        ${q.agencyName ? `<div style="margin-top:4px; font-size:12px; color:#1e3a5f;">代理店：<strong>${escapeHtml(q.agencyName)}</strong></div>` : ''}
         <div style="margin-top:6px; font-size:11px;">下記の通り、御見積申し上げます。</div>
       </div>
       <div class="pv-date">
@@ -1513,12 +1509,6 @@ function renderPreview() {
       </div>
     </div>
 
-    <div class="pv-section">
-      <h4>件名</h4>
-      <div style="padding:6px 10px; background:#fafbfd; border:1px solid #e5e7eb; border-radius:4px;">
-        ${escapeHtml(serviceTitle)}
-      </div>
-    </div>
 
     <div class="pv-section">
       <h4>施策対象</h4>
@@ -1526,27 +1516,27 @@ function renderPreview() {
         <tr>
           <td class="cat" rowspan="6">施策<br>対象</td>
           <td class="h">名称<br><span style="font-size:9px; color:#6b7280;">（店舗名または会社名）</span></td>
-          <td class="v">${escapeHtml(q.targetName) || '<span class="empty">ここに名称を記載</span>'}</td>
+          <td class="v">${escapeHtml(q.targetName) || ''}</td>
         </tr>
         <tr>
           <td class="h">住所</td>
-          <td class="v">${escapeHtml(q.targetAddress) || '<span class="empty">ここに対象住所を記載</span>'}</td>
+          <td class="v">${escapeHtml(q.targetAddress) || ''}</td>
         </tr>
         <tr>
           <td class="h">HP URL</td>
-          <td class="v">${q.targetWebsite ? `<a href="${escapeHtml(q.targetWebsite)}" target="_blank">${escapeHtml(q.targetWebsite)}</a>` : '<span class="empty">ここに対象URLを記載</span>'}</td>
+          <td class="v">${q.targetWebsite ? `<a href="${escapeHtml(q.targetWebsite)}" target="_blank">${escapeHtml(q.targetWebsite)}</a>` : ''}</td>
         </tr>
         <tr>
           <td class="h">Google マップ URL</td>
-          <td class="v">${q.targetGoogleMap ? `<a href="${escapeHtml(q.targetGoogleMap)}" target="_blank">${escapeHtml(q.targetGoogleMap)}</a>` : '<span class="empty">ここに対象URLを記載</span>'}</td>
+          <td class="v">${q.targetGoogleMap ? `<a href="${escapeHtml(q.targetGoogleMap)}" target="_blank">${escapeHtml(q.targetGoogleMap)}</a>` : ''}</td>
         </tr>
         <tr>
           <td class="h">Facebook</td>
-          <td class="v">${q.targetFacebook ? `<a href="${escapeHtml(q.targetFacebook)}" target="_blank">${escapeHtml(q.targetFacebook)}</a>` : '<span class="empty">ここにFacebookのURLを記載</span>'}</td>
+          <td class="v">${q.targetFacebook ? `<a href="${escapeHtml(q.targetFacebook)}" target="_blank">${escapeHtml(q.targetFacebook)}</a>` : ''}</td>
         </tr>
         <tr>
           <td class="h">Instagram</td>
-          <td class="v">${q.targetInstagram ? `<a href="${escapeHtml(q.targetInstagram)}" target="_blank">${escapeHtml(q.targetInstagram)}</a>` : '<span class="empty">ここにInstagramのURLを記載</span>'}</td>
+          <td class="v">${q.targetInstagram ? `<a href="${escapeHtml(q.targetInstagram)}" target="_blank">${escapeHtml(q.targetInstagram)}</a>` : ''}</td>
         </tr>
       </table>
     </div>
@@ -1577,8 +1567,7 @@ function renderPreview() {
       <h4>契約条件</h4>
       <table class="pv-info-table">
         <tr>
-          <td class="h">支援開始月</td><td>${escapeHtml(q.supportStartMonth) || ''}</td>
-          <td class="h">契約形式</td><td>${escapeHtml(q.signFormat) || ''}</td>
+          <td class="h">契約形式</td><td colspan="3">${escapeHtml(q.signFormat) || ''}</td>
         </tr>
         <tr>
           <td class="h">契約開始日</td><td>${fmtDateJP(q.contractStartDate) || ''}</td>
@@ -1635,14 +1624,6 @@ function renderPreview() {
         ${q.signFormat ? `（契約形式：<strong>${escapeHtml(q.signFormat)}</strong>）` : ''}
       </div>
       <div class="pv-signs">
-        <div class="pv-sign-box">
-          <div class="sign-title">受注者（株式会社ナレッジマーケティング）</div>
-          <div class="sign-line"><span class="lbl">会社</span><span class="val">${escapeHtml(COMPANY_INFO.name)}</span></div>
-          <div class="sign-line"><span class="lbl">所在地</span><span class="val">${escapeHtml(COMPANY_INFO.address)}</span></div>
-          <div class="sign-line"><span class="lbl">担当</span><span class="val">${escapeHtml(q.salesPerson) || ''}</span></div>
-          <div class="sign-line"><span class="lbl">日付</span><span class="val">${fmtDateJP(q.issueDate) || ''}</span></div>
-          <div class="seal">印</div>
-        </div>
         <div class="pv-sign-box">
           <div class="sign-title">発注者（お客様）</div>
           <div class="sign-line"><span class="lbl">会社</span><span class="val">${escapeHtml(q.customerCompany) || ''}</span></div>
@@ -1710,7 +1691,7 @@ function exportToExcel() {
   data.push(['代表者役職', q.customerTitle, '代表者氏名', q.customerName]);
   data.push([]);
   data.push(['【契約条件】']);
-  data.push(['支援開始月', q.supportStartMonth, '', '', '契約形式', q.signFormat]);
+  data.push(['契約形式', q.signFormat]);
   data.push(['契約開始日', q.contractStartDate, '', '', '契約期間', q.contractMonths ? q.contractMonths + 'ヶ月' : '']);
   data.push(['契約終了日', q.contractEndDate, '', '', '支払回数', q.paymentCount != null ? q.paymentCount + '回' : '']);
   data.push(['初回支払期日', q.firstPaymentDue, '', '', '2回目以降', q.recurringPaymentTerm]);
@@ -1864,7 +1845,6 @@ function applyQuoteToForm(q) {
   set('targetGoogleMap',      q.targetGoogleMap);
   set('targetFacebook',       q.targetFacebook);
   set('targetInstagram',      q.targetInstagram);
-  set('supportStartMonth',    q.supportStartMonth);
   set('contractStartDate',    q.contractStartDate);
   set('contractMonths',       q.contractMonths);
   set('contractEndDate',      q.contractEndDate);
@@ -1936,7 +1916,7 @@ function applyQuoteToForm(q) {
 function clearForm() {
   if (!confirm('入力内容をすべてクリアします。よろしいですか？')) return;
   ['issueDate','validUntil','customerCompany','customerAddress','customerTitle',
-   'customerName','signFormat','supportStartMonth','contractStartDate',
+   'customerName','signFormat','contractStartDate',
    'contractEndDate','firstPaymentDue','salesPerson','agencyName',
    'targetName','targetAddress','targetWebsite','targetGoogleMap',
    'targetFacebook','targetInstagram'
@@ -1964,7 +1944,7 @@ function setDefaultDates() {
 
   if (!$('validUntil').value) {
     const v = new Date(today);
-    v.setDate(v.getDate() + 7);
+    v.setDate(v.getDate() + 14);
     $('validUntil').value = v.toISOString().slice(0, 10);
   }
 }
