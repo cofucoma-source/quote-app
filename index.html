@@ -459,8 +459,7 @@ input, select, textarea {
   width: 80px;
   text-align: center;
   font-weight: 700;
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
+  line-height: 1.5;
 }
 .pv-target td.h {
   background: #e5e7eb;
@@ -871,6 +870,15 @@ input, select, textarea {
       <button type="button" class="add-custom-btn" onclick="addCustomItem()">＋ 行を追加</button>
       <div style="margin-top:8px; font-size:11px; color:#6b7280;">
         ※ ここで入力した内容も集計・プレビュー・PDF・Excel出力に反映されます。
+      </div>
+    </section>
+
+    <!-- 備考 -->
+    <section class="section">
+      <h3>📝 備考 <span class="note">見積書の下部に表示されます（任意）</span></h3>
+      <div class="f">
+        <label>備考・補足事項</label>
+        <textarea id="remarks" rows="4" placeholder="例：本見積は◯◯を前提としています。&#10;キャンセル料：契約後14日以降は全額。" style="padding: 7px 10px; border: 1px solid #d1d5db; border-radius: 5px; background: #fff; font-family: inherit; font-size: 14px; resize: vertical; line-height: 1.6;"></textarea>
       </div>
     </section>
 
@@ -1441,6 +1449,7 @@ function collectQuoteData() {
     recurringPaymentTerm:$('recurringPaymentTerm').value,
     salesPerson:         $('salesPerson').value,
     agencyName:          $('agencyName').value,
+    remarks:             $('remarks').value,
     totalDiscount:       parseFloat($('totalDiscount').value) || 0,
 
     items: items,
@@ -1494,7 +1503,6 @@ function renderPreview() {
     <div class="pv-meta">
       <div class="pv-customer">
         <div class="company">${escapeHtml(q.customerCompany || '＿＿＿＿＿＿＿＿')} 御中</div>
-        ${q.agencyName ? `<div style="margin-top:4px; font-size:12px; color:#1e3a5f;">代理店：<strong>${escapeHtml(q.agencyName)}</strong></div>` : ''}
         <div style="margin-top:6px; font-size:11px;">下記の通り、御見積申し上げます。</div>
       </div>
       <div class="pv-date">
@@ -1504,6 +1512,7 @@ function renderPreview() {
           <div class="name">${escapeHtml(COMPANY_INFO.name)}</div>
           <div>${escapeHtml(COMPANY_INFO.postalCode)}</div>
           <div>${escapeHtml(COMPANY_INFO.address)}</div>
+          ${q.agencyName ? `<div style="margin-top:4px;">代理店：${escapeHtml(q.agencyName)}</div>` : ''}
           ${q.salesPerson ? `<div style="margin-top:4px;">担当：${escapeHtml(q.salesPerson)}</div>` : ''}
         </div>
       </div>
@@ -1529,7 +1538,7 @@ function renderPreview() {
       <h4>施策対象</h4>
       <table class="pv-target">
         <tr>
-          <td class="cat" rowspan="${totalRows}">施策<br>対象</td>
+          <td class="cat" rowspan="${totalRows}">施策対象</td>
           <td class="h">名称<br><span style="font-size:9px; color:#6b7280;">（店舗名または会社名）</span></td>
           <td class="v">${escapeHtml(q.targetName) || ''}</td>
         </tr>
@@ -1547,7 +1556,7 @@ function renderPreview() {
       <h4>契約者情報</h4>
       <table class="pv-contract">
         <tr>
-          <td class="cat" rowspan="3">契約者<br>情報</td>
+          <td class="cat" rowspan="3">契約者情報</td>
           <td class="h" colspan="2">企業名</td>
           <td colspan="3">${escapeHtml(q.customerCompany) || ''}</td>
         </tr>
@@ -1583,7 +1592,6 @@ function renderPreview() {
           <td class="h">初回支払期日</td><td>${fmtDateJP(q.firstPaymentDue) || ''}</td>
           <td class="h">2回目以降</td><td>${escapeHtml(q.recurringPaymentTerm) || ''}</td>
         </tr>
-        ${q.agencyName ? `<tr><td class="h">代理店</td><td colspan="3">${escapeHtml(q.agencyName)}</td></tr>` : ''}
       </table>
     </div>
 
@@ -1619,6 +1627,13 @@ function renderPreview() {
       </table>
     </div>
 
+    ${q.remarks ? `
+    <div class="pv-section">
+      <h4>備考</h4>
+      <div style="padding:8px 12px; background:#fafbfd; border:1px solid #e5e7eb; border-radius:4px; font-size:11px; line-height:1.7; white-space:pre-wrap;">${escapeHtml(q.remarks)}</div>
+    </div>
+    ` : ''}
+
     <div class="pv-section">
       <h4>申込・押印欄</h4>
       <div style="font-size:10px; color:#6b7280; margin-bottom:6px;">
@@ -1641,7 +1656,6 @@ function renderPreview() {
       ※ 価格は全て税別表記です。<br>
       ※ 本見積書は契約後、双方の合意の上、申込書として効力を持ちます。<br>
       ※ 利用規約：<a href="${COMPANY_INFO.kiyakuUrl}" target="_blank">${COMPANY_INFO.kiyakuUrl}</a><br>
-      ${q.agencyName ? `※ 代理店：${escapeHtml(q.agencyName)}<br>` : ''}
     </div>
   `;
 
@@ -1698,6 +1712,7 @@ function exportToExcel() {
   data.push(['契約終了日', q.contractEndDate, '', '', '支払回数', q.paymentCount != null ? q.paymentCount + '回' : '']);
   data.push(['初回支払期日', q.firstPaymentDue, '', '', '2回目以降', q.recurringPaymentTerm]);
   if (q.agencyName) data.push(['代理店', q.agencyName]);
+  if (q.remarks) { data.push([]); data.push(['【備考】']); q.remarks.split('\n').forEach(line => data.push([line])); }
   data.push([]);
   data.push(['【サービス明細】']);
   data.push(['#', 'サービス名', '内容', '備考', '数量', '初期費用', '月額', '年額', '値引き', '小計']);
@@ -1855,6 +1870,7 @@ function applyQuoteToForm(q) {
   set('recurringPaymentTerm', q.recurringPaymentTerm);
   set('salesPerson',          q.salesPerson);
   set('agencyName',           q.agencyName);
+  set('remarks',              q.remarks);
   set('totalDiscount',        q.totalDiscount || 0);
 
   ITEM_STATE = {};
@@ -1919,7 +1935,7 @@ function clearForm() {
   if (!confirm('入力内容をすべてクリアします。よろしいですか？')) return;
   ['issueDate','validUntil','customerCompany','customerAddress','customerTitle',
    'customerName','signFormat','contractStartDate',
-   'contractEndDate','firstPaymentDue','salesPerson','agencyName',
+   'contractEndDate','firstPaymentDue','salesPerson','agencyName','remarks',
    'targetName','targetAddress','targetWebsite','targetGoogleMap',
    'targetFacebook','targetInstagram'
   ].forEach(id => { if ($(id)) $(id).value = ''; });
