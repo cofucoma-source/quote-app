@@ -94,6 +94,8 @@ input, select, textarea {
 .btn-import:hover { background: #4f46e5; }
 .btn-sheet  { background: #0ea5e9; color: #fff; }
 .btn-sheet:hover { background: #0284c7; }
+.btn-ai     { background: #8b5cf6; color: #fff; }
+.btn-ai:hover { background: #7c3aed; }
 .btn-clear  { background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.3); }
 .btn-clear:hover { background: rgba(239,68,68,0.85); border-color: rgba(239,68,68,0.85); }
 .btn-reload { background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.3); }
@@ -691,8 +693,24 @@ input, select, textarea {
     padding: 15mm 12mm;
     max-width: 100%;
     min-height: 0;
-    page-break-after: always;
   }
+  /* 分断されると見づらいブロックを「中で改ページしない」よう指定 */
+  .pv-section,
+  .pv-totals,
+  .pv-totals table,
+  .pv-target,
+  .pv-contract,
+  .pv-info-table,
+  .pv-items,
+  .pv-signs,
+  .pv-sign-box {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  /* サービス明細の各行も極力分断しない */
+  .pv-items tr { page-break-inside: avoid; break-inside: avoid; }
+  /* テーブル直前の見出しも残るように */
+  .pv-section h4 { page-break-after: avoid; break-after: avoid; }
   @page {
     size: A4 portrait;
     margin: 0;
@@ -714,6 +732,7 @@ input, select, textarea {
     <button class="btn-out btn-excel"  onclick="exportToExcel()">📊 Excel</button>
     <button class="btn-out btn-import" onclick="document.getElementById('xlsx-input').click()">📂 Excel読込</button>
     <button class="btn-out btn-sheet"  onclick="openSheetUrlModal()">🔗 スプシURL</button>
+    <button class="btn-out btn-ai"     onclick="openAiModal()">🤖 AI自動入力</button>
     <button class="btn-out btn-reload" onclick="reloadMaster()" title="マスター再読込">🔄 マスター</button>
     <button class="btn-out btn-clear"  onclick="clearForm()">🗑 クリア</button>
   </div>
@@ -952,6 +971,35 @@ input, select, textarea {
     <div class="modal-actions">
       <button class="cancel" onclick="closeSheetUrlModal()">キャンセル</button>
       <button class="ok"     onclick="importFromSheetUrl()">読込</button>
+    </div>
+  </div>
+</div>
+
+<!--  AI自動入力モーダル  -->
+<div class="modal-overlay no-print" id="aiModal">
+  <div class="modal" style="max-width:640px;">
+    <h3>🤖 AI自動入力（Claudeで取得した結果を貼付）</h3>
+    <p style="font-size:12px; color:#6b7280; margin-bottom:10px; line-height:1.7;">
+      Claude.ai の専用プロジェクトに <strong>顧客企業のURL</strong> を送信して返ってきた JSON を、下の枠に貼り付けてください。<br>
+      未対応のフィールドや空欄は無視されます。既存の入力値は上書きされます（空欄なら維持）。
+    </p>
+    <details style="margin-bottom:10px;">
+      <summary style="cursor:pointer; font-size:12px; color:#1e3a5f; font-weight:600;">📘 Claudeプロジェクトのセットアップ手順を見る</summary>
+      <div style="margin-top:8px; padding:10px; background:#f3f5f9; border-radius:6px; font-size:11px; line-height:1.7;">
+        <ol style="margin-left:18px;">
+          <li>Claude.ai にログイン →「Projects」→「+ New project」</li>
+          <li>プロジェクト名：「見積書自動入力」</li>
+          <li>「Instructions」欄に、別ファイルでお渡しした <code>claude_project_prompt.md</code> の内容をそのまま貼り付け</li>
+          <li>保存したら、そのプロジェクト内で URL（例：<code>https://example.com</code>）だけ送信</li>
+          <li>返ってきた JSON ブロック全体をコピー → ここに貼り付け → 「適用」</li>
+        </ol>
+      </div>
+    </details>
+    <textarea id="aiJsonInput" placeholder='{"customerCompany": "株式会社○○", "customerAddress": "...", ...}' style="width:100%; min-height:180px; padding:10px; border:1px solid #d1d5db; border-radius:6px; font-family: monospace; font-size:12px; resize:vertical;"></textarea>
+    <div id="aiPreview" style="margin-top:10px; font-size:11px; color:#1e3a5f;"></div>
+    <div class="modal-actions" style="margin-top:14px;">
+      <button class="cancel" onclick="closeAiModal()">キャンセル</button>
+      <button class="ok"     onclick="applyAiJson()">適用</button>
     </div>
   </div>
 </div>
@@ -1682,46 +1730,79 @@ function exportToExcel() {
   const q = collectQuoteData();
   const totals = recalc();
 
+  // 統一構造：Aラベル / B値 ベース（サービス明細だけ多列）
+  // 列構成：A=ラベル/#, B=値/サービス名, C=内容, D=備考, E=数量, F=初期費用, G=月額, H=年額, I=値引き, J=小計
+  // 集計欄は I=ラベル, J=値 で右寄せ
+  const NCOL = 10;
+  const blank = () => Array(NCOL).fill('');
+  const row1 = (label, val) => { const r = blank(); r[0] = label; r[1] = val != null ? val : ''; return r; };
+
   const data = [];
-  data.push(['見積書 兼 申込書']);
-  data.push([]);
-  data.push([(q.customerCompany || '') + ' 御中', '', '', '', '', '', '発行日', q.issueDate]);
-  data.push(['', '', '', '', '', '', '有効期限', q.validUntil]);
-  data.push([]);
-  data.push(['発行元', COMPANY_INFO.name]);
-  data.push(['', COMPANY_INFO.postalCode + ' ' + COMPANY_INFO.address]);
-  if (q.salesPerson) data.push(['担当', q.salesPerson]);
-  data.push([]);
-  data.push(['【施策対象】']);
-  data.push(['名称', q.targetName]);
-  data.push(['住所', q.targetAddress]);
-  data.push(['HP URL', q.targetWebsite]);
-  data.push(['Google マップ URL', q.targetGoogleMap]);
-  data.push(['Facebook', q.targetFacebook]);
-  data.push(['Instagram', q.targetInstagram]);
-  data.push([]);
-  data.push(['【契約者情報】']);
-  data.push(['企業名', q.customerCompany]);
-  data.push(['所在地', q.customerAddress]);
-  data.push(['代表者役職', q.customerTitle, '代表者氏名', q.customerName]);
-  data.push([]);
-  data.push(['【契約条件】']);
-  data.push(['契約形式', q.signFormat]);
-  data.push(['契約開始日', q.contractStartDate, '', '', '契約期間', q.contractMonths ? q.contractMonths + 'ヶ月' : '']);
-  data.push(['契約終了日', q.contractEndDate, '', '', '支払回数', q.paymentCount != null ? q.paymentCount + '回' : '']);
-  data.push(['初回支払期日', q.firstPaymentDue, '', '', '2回目以降', q.recurringPaymentTerm]);
-  if (q.agencyName) data.push(['代理店', q.agencyName]);
-  if (q.remarks) { data.push([]); data.push(['【備考】']); q.remarks.split('\n').forEach(line => data.push([line])); }
-  data.push([]);
-  data.push(['【サービス明細】']);
+
+  // === ヘッダー ===
+  const titleRow = blank(); titleRow[0] = '見積書 兼 申込書';
+  data.push(titleRow);
+  data.push(blank());
+
+  const custRow = blank();
+  custRow[0] = (q.customerCompany || '') + ' 御中';
+  custRow[8] = '発行日';
+  custRow[9] = q.issueDate || '';
+  data.push(custRow);
+
+  const validRow = blank();
+  validRow[8] = '有効期限';
+  validRow[9] = q.validUntil || '';
+  data.push(validRow);
+  data.push(blank());
+
+  // === 発行元 ===
+  data.push(row1('■ 発行元', ''));
+  data.push(row1('会社名', COMPANY_INFO.name));
+  data.push(row1('所在地', COMPANY_INFO.postalCode + ' ' + COMPANY_INFO.address));
+  if (q.agencyName)  data.push(row1('代理店', q.agencyName));
+  if (q.salesPerson) data.push(row1('担当', q.salesPerson));
+  data.push(blank());
+
+  // === 施策対象 ===
+  data.push(row1('■ 施策対象', ''));
+  data.push(row1('名称', q.targetName));
+  data.push(row1('住所', q.targetAddress));
+  if (q.targetWebsite)   data.push(row1('HP URL', q.targetWebsite));
+  if (q.targetGoogleMap) data.push(row1('Google マップ URL', q.targetGoogleMap));
+  if (q.targetFacebook)  data.push(row1('Facebook', q.targetFacebook));
+  if (q.targetInstagram) data.push(row1('Instagram', q.targetInstagram));
+  data.push(blank());
+
+  // === 契約者情報 ===
+  data.push(row1('■ 契約者情報', ''));
+  data.push(row1('企業名', q.customerCompany));
+  data.push(row1('所在地', q.customerAddress));
+  data.push(row1('役職', q.customerTitle));
+  data.push(row1('代表者氏名', q.customerName));
+  data.push(blank());
+
+  // === 契約条件 ===
+  data.push(row1('■ 契約条件', ''));
+  data.push(row1('契約形式', q.signFormat));
+  data.push(row1('契約開始日', q.contractStartDate));
+  data.push(row1('契約終了日', q.contractEndDate));
+  data.push(row1('契約期間', q.contractMonths ? q.contractMonths + 'ヶ月' : ''));
+  data.push(row1('支払回数', q.paymentCount != null ? q.paymentCount + '回' : ''));
+  data.push(row1('初回支払期日', q.firstPaymentDue));
+  data.push(row1('2回目以降', q.recurringPaymentTerm));
+  data.push(blank());
+
+  // === サービス明細 ===
+  data.push(row1('■ サービス明細', ''));
   data.push(['#', 'サービス名', '内容', '備考', '数量', '初期費用', '月額', '年額', '値引き', '小計']);
   q.items.forEach((it, idx) => {
     data.push([
       idx + 1,
-      it.productName,
-      it.content,
-      it.note,
-      it.quantity,
+      it.productName || '',
+      it.content || '',
+      it.note || '',
+      it.quantity != null ? it.quantity : 1,
       it.initialFee || '',
       it.monthlyFee || '',
       it.yearlyFee  || '',
@@ -1729,29 +1810,59 @@ function exportToExcel() {
       calcSubtotal(it),
     ]);
   });
-  data.push([]);
-  data.push(['', '', '', '', '', '', '', '', '初期費用合計', totals.initialTotal]);
-  data.push(['', '', '', '', '', '', '', '', '月額合計',     totals.monthlyTotal]);
-  data.push(['', '', '', '', '', '', '', '', `月額×${totals.months}ヶ月`, totals.monthlySum]);
-  data.push(['', '', '', '', '', '', '', '', '年額合計',     totals.yearlyTotal]);
-  if (totals.totalDiscount) data.push(['', '', '', '', '', '', '', '', '全体値引き', -totals.totalDiscount]);
-  data.push(['', '', '', '', '', '', '', '', '合計（税別）', totals.grandTotal]);
-  data.push(['', '', '', '', '', '', '', '', '初回支払額',   totals.firstPayment]);
-  data.push(['', '', '', '', '', '', '', '', '2回目以降月額', totals.recurring]);
-  data.push([]);
-  data.push(['※ 価格は全て税別表記です。']);
-  data.push(['※ 利用規約：' + COMPANY_INFO.kiyakuUrl]);
+  data.push(blank());
 
-  // 復元用メタ行（最終行）
-  data.push([]);
-  data.push([META_TAG, JSON.stringify(q)]);
+  // === 集計 ===
+  const totRow = (label, val) => {
+    const r = blank();
+    r[8] = label;
+    r[9] = val;
+    return r;
+  };
+  data.push(totRow('初期費用合計', totals.initialTotal));
+  data.push(totRow('月額合計',     totals.monthlyTotal));
+  data.push(totRow(`月額 × ${totals.months}ヶ月`, totals.monthlySum));
+  data.push(totRow('年額合計',     totals.yearlyTotal));
+  if (totals.totalDiscount) data.push(totRow('全体値引き', -totals.totalDiscount));
+  data.push(totRow('合計（税別）', totals.grandTotal));
+  data.push(totRow('初回支払額',   totals.firstPayment));
+  data.push(totRow('2回目以降月額', totals.recurring));
+  data.push(blank());
+
+  // === 備考 ===
+  if (q.remarks) {
+    data.push(row1('■ 備考', ''));
+    q.remarks.split('\n').forEach(line => data.push(row1('', line)));
+    data.push(blank());
+  }
+
+  // === フッター注記 ===
+  data.push(row1('', '※ 価格は全て税別表記です。'));
+  data.push(row1('', '※ 本見積書は契約後、双方の合意の上、申込書として効力を持ちます。'));
+  data.push(row1('', '※ 利用規約：' + COMPANY_INFO.kiyakuUrl));
+
+  // === 復元用メタ行（最終行）===
+  data.push(blank());
+  const metaRow = blank();
+  metaRow[0] = META_TAG;
+  metaRow[1] = JSON.stringify(q);
+  data.push(metaRow);
 
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet(data);
 
+  // 列幅
   ws['!cols'] = [
-    { wch: 6 }, { wch: 22 }, { wch: 28 }, { wch: 22 }, { wch: 6 },
-    { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 10 }, { wch: 14 },
+    { wch: 14 },  // A ラベル/#
+    { wch: 36 },  // B 値/サービス名
+    { wch: 30 },  // C 内容
+    { wch: 22 },  // D 備考
+    { wch: 6 },   // E 数量
+    { wch: 12 },  // F 初期費用
+    { wch: 12 },  // G 月額
+    { wch: 14 },  // H 年額
+    { wch: 10 },  // I 値引き/集計ラベル
+    { wch: 14 },  // J 小計/集計値
   ];
 
   XLSX.utils.book_append_sheet(wb, ws, '見積書');
@@ -1803,6 +1914,75 @@ function openSheetUrlModal() {
 }
 function closeSheetUrlModal() {
   $('sheetUrlModal').classList.remove('show');
+}
+
+/* ===========================================================
+   AI 自動入力（JSON貼付）
+   =========================================================== */
+function openAiModal() {
+  $('aiJsonInput').value = '';
+  $('aiPreview').innerHTML = '';
+  $('aiModal').classList.add('show');
+}
+function closeAiModal() {
+  $('aiModal').classList.remove('show');
+}
+function applyAiJson() {
+  const raw = $('aiJsonInput').value.trim();
+  if (!raw) { toast('JSONを貼り付けてください', 'error'); return; }
+  // ```json ... ``` で囲まれている場合は中身を取り出す
+  let jsonText = raw;
+  const mFence = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (mFence) jsonText = mFence[1];
+  // 最初の { から最後の } までを抽出（前置きテキスト対策）
+  const first = jsonText.indexOf('{');
+  const last  = jsonText.lastIndexOf('}');
+  if (first >= 0 && last > first) jsonText = jsonText.slice(first, last + 1);
+
+  let data;
+  try {
+    data = JSON.parse(jsonText);
+  } catch (e) {
+    toast('JSONの解析に失敗しました：' + e.message, 'error');
+    $('aiPreview').innerHTML = '<span style="color:#b91c1c;">パースエラー：' + escapeHtml(e.message) + '</span>';
+    return;
+  }
+
+  // 対応フィールド一覧（モーダルから入力フォームへの単純マッピング）
+  const FIELD_MAP = {
+    customerCompany:  '顧客会社名',
+    customerAddress:  '顧客所在地',
+    customerTitle:    '役職',
+    customerName:     '代表者氏名',
+    targetName:       '施策対象 名称',
+    targetAddress:    '施策対象 住所',
+    targetWebsite:    'HP URL',
+    targetGoogleMap:  'Google マップ URL',
+    targetFacebook:   'Facebook URL',
+    targetInstagram:  'Instagram URL',
+    salesPerson:      '見積担当者',
+    agencyName:       '代理店名',
+  };
+
+  const applied = [];
+  Object.keys(FIELD_MAP).forEach(key => {
+    const val = data[key];
+    if (val == null) return;
+    const sval = String(val).trim();
+    if (!sval) return;
+    const el = $(key);
+    if (!el) return;
+    el.value = sval;
+    applied.push(FIELD_MAP[key]);
+  });
+
+  recalc();
+  closeAiModal();
+  if (applied.length) {
+    toast(`✓ ${applied.length}項目を自動入力しました`, 'ok');
+  } else {
+    toast('適用できる項目がありませんでした', 'error');
+  }
 }
 
 async function importFromSheetUrl() {
@@ -1927,6 +2107,7 @@ function applyQuoteToForm(q) {
   showTab('form');
 }
 
+
 /* ===========================================================
    CLEAR
    =========================================================== */
@@ -1977,6 +2158,9 @@ function bindFormEvents() {
 
   $('sheetUrlModal').addEventListener('click', (e) => {
     if (e.target.id === 'sheetUrlModal') closeSheetUrlModal();
+  });
+  $('aiModal').addEventListener('click', (e) => {
+    if (e.target.id === 'aiModal') closeAiModal();
   });
 }
 
