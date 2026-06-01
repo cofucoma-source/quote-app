@@ -1713,9 +1713,28 @@ function renderPreview() {
    PDF (window.print)
    =========================================================== */
 function exportPDF() {
+  const q = collectQuoteData();
   renderPreview();
   // 印刷時はプレビューのみ表示するよう、印刷直前にタブを切り替えておく
   showTab('preview');
+
+  // ブラウザの印刷ダイアログのデフォルトファイル名は document.title 由来。
+  // 印刷の瞬間だけタイトルを差し替えて、終わったら元に戻す。
+  const safeCompany = (q.customerCompany || '無題').replace(/[\\/:*?"<>|]/g, '_');
+  const printTitle = `【${safeCompany}】御中見積兼申込書`;
+  const originalTitle = document.title;
+  document.title = printTitle;
+
+  // 印刷完了/キャンセル後にタイトルを戻す（afterprint または focus 復帰時）
+  const restore = () => {
+    document.title = originalTitle;
+    window.removeEventListener('afterprint', restore);
+    window.removeEventListener('focus', restore);
+  };
+  window.addEventListener('afterprint', restore);
+  // afterprint が発火しない一部ブラウザ向けのフォールバック
+  setTimeout(() => window.addEventListener('focus', restore), 500);
+
   setTimeout(() => window.print(), 100);
 }
 
@@ -2198,8 +2217,7 @@ function exportToExcel() {
   XLSX.utils.book_append_sheet(wb, ws, '見積書');
 
   const safeCompany = (q.customerCompany || '無題').replace(/[\\/:*?"<>|]/g, '_');
-  const dateStr = q.issueDate || new Date().toISOString().slice(0, 10);
-  const filename = `見積書_${safeCompany}_${dateStr}.xlsx`;
+  const filename = `【${safeCompany}】御中見積兼申込書.xlsx`;
   XLSX.writeFile(wb, filename);
   toast('Excelを出力しました', 'ok');
 }
