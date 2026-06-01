@@ -1404,25 +1404,36 @@ function getSelectedItems() {
   return [...fromMaster, ...fromCustom];
 }
 
-function calcSubtotal(item) {
+// 行ごとに「値引きをどのカテゴリに当てるか」を統一的に計算するヘルパー
+// 月額があれば月額に → なければ年額に → なければ初期費用に充当
+function applyDiscountByCategory(item) {
   const qty = item.quantity || 1;
-  const i = (item.initialFee || 0) * qty;
-  const m = (item.monthlyFee || 0) * qty;
-  const y = (item.yearlyFee  || 0) * qty;
-  // 小計は「単発（初期＋年）＋ 月額」を1ヶ月換算で表示。値引きは初期に充当。
-  return Math.max(0, i + m + y - (item.discount || 0));
+  const i0 = (item.initialFee || 0) * qty;
+  const m0 = (item.monthlyFee || 0) * qty;
+  const y0 = (item.yearlyFee  || 0) * qty;
+  const d  = item.discount || 0;
+  let i = i0, m = m0, y = y0;
+  if (m0 > 0)      m = Math.max(0, m0 - d);
+  else if (y0 > 0) y = Math.max(0, y0 - d);
+  else if (i0 > 0) i = Math.max(0, i0 - d);
+  return { i, m, y };
+}
+
+function calcSubtotal(item) {
+  // 小計＝1ヶ月相当の支払額（値引き済み）。月額のある商品では月額に値引きが反映される。
+  const { i, m, y } = applyDiscountByCategory(item);
+  return i + m + y;
 }
 
 function recalc() {
   const items = getSelectedItems();
-  let initialTotal = 0, monthlyTotal = 0, yearlyTotal = 0, itemDiscountTotal = 0;
+  let initialTotal = 0, monthlyTotal = 0, yearlyTotal = 0;
 
   items.forEach(it => {
-    const qty = it.quantity || 1;
-    if (it.initialFee) initialTotal += it.initialFee * qty;
-    if (it.monthlyFee) monthlyTotal += it.monthlyFee * qty;
-    if (it.yearlyFee)  yearlyTotal  += it.yearlyFee  * qty;
-    itemDiscountTotal += (it.discount || 0);
+    const { i, m, y } = applyDiscountByCategory(it);
+    initialTotal += i;
+    monthlyTotal += m;
+    yearlyTotal  += y;
   });
 
   // 各行の小計を更新（マスタ）
@@ -1448,7 +1459,8 @@ function recalc() {
   const months = Math.max(1, parseInt($('contractMonths').value, 10) || 1);
   const monthlySum = monthlyTotal * months;
   const totalDiscount = parseFloat($('totalDiscount').value) || 0;
-  const grandTotal = Math.max(0, initialTotal + monthlySum + yearlyTotal - itemDiscountTotal - totalDiscount);
+  // 値引きは既にinitialTotal/monthlyTotal/yearlyTotal内で適用済み。全体値引きのみ追加で引く。
+  const grandTotal = Math.max(0, initialTotal + monthlySum + yearlyTotal - totalDiscount);
   const firstPayment = initialTotal + monthlyTotal + yearlyTotal; // 確定：初期＋月額1ヶ月＋年額
   const recurring = monthlyTotal;
 
@@ -1462,7 +1474,7 @@ function recalc() {
 
   return {
     initialTotal, monthlyTotal, monthlySum, yearlyTotal,
-    itemDiscountTotal, totalDiscount, grandTotal, firstPayment, recurring,
+    totalDiscount, grandTotal, firstPayment, recurring,
     months, items
   };
 }
@@ -2296,7 +2308,7 @@ function applyAiJson() {
     return;
   }
 
-  // 対応フィールド一覧（モーダルから入力フォームへの単純マッピング）
+  // 対応フィールド一覧
   const FIELD_MAP = {
     customerCompany:  '顧客会社名',
     customerAddress:  '顧客所在地',
@@ -2327,134 +2339,11 @@ function applyAiJson() {
   recalc();
   closeAiModal();
   if (applied.length) {
-    toast(`✓ ${applied.length}項目を自動入力しました`, 'ok');
+    toast('✓ ' + applied.length + '項目を自動入力しました', 'ok');
   } else {
     toast('適用できる項目がありませんでした', 'error');
   }
 }
-
-async function importFromSheetUrl() {
-  const url = $('sheetUrlInput').value.trim();
-  if (!url) { toast('URLを入力してください', 'error'); return; }
-
-  let csvUrl;
-  if (/\/d\/e\/[^/]+\/pub/.test(url)) {
-    csvUrl = url.replace(/output=\w+/, 'output=csv');
-    if (!/output=csv/.test(csvUrl)) {
-      csvUrl += (csvUrl.includes('?') ? '&' : '?') + 'output=csv';
-    }
-  } else {
-    const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-    const gidMatch = url.match(/[#&?]gid=(\d+)/);
-    if (!m) { toast('スプレッドシートのURL形式が正しくありません', 'error'); return; }
-    const sheetId = m[1];
-    const gid = gidMatch ? gidMatch[1] : '0';
-    csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
-  }
-  try {
-    const res = await fetch(csvUrl, { cache: 'no-store' });
-    if (!res.ok) throw new Error('HTTP ' + res.status + ' / 公開設定をご確認ください');
-    const csv = await res.text();
-    const rows = parseCSV(csv);
-    const metaRow = rows.find(r => r && r[0] === META_TAG);
-    if (metaRow && metaRow[1]) {
-      const quote = JSON.parse(metaRow[1]);
-      applyQuoteToForm(quote);
-      closeSheetUrlModal();
-      toast('スプシから復元しました', 'ok');
-    } else {
-      toast(`このスプシには復元用データ（${META_TAG}行）がありません`, 'error');
-    }
-  } catch (e) {
-    console.error(e);
-    toast('スプシ読込に失敗：' + e.message, 'error');
-  }
-}
-
-/* ===========================================================
-   APPLY QUOTE TO FORM
-   =========================================================== */
-function applyQuoteToForm(q) {
-  const set = (id, v) => { if ($(id)) $(id).value = v != null ? v : ''; };
-  set('issueDate',            q.issueDate);
-  set('validUntil',           q.validUntil);
-  set('customerCompany',      q.customerCompany);
-  set('customerAddress',      q.customerAddress);
-  set('customerTitle',        q.customerTitle);
-  set('customerName',         q.customerName);
-  set('signFormat',           q.signFormat);
-  set('targetName',           q.targetName);
-  set('targetAddress',        q.targetAddress);
-  set('targetWebsite',        q.targetWebsite);
-  set('targetGoogleMap',      q.targetGoogleMap);
-  set('targetFacebook',       q.targetFacebook);
-  set('targetInstagram',      q.targetInstagram);
-  set('contractStartDate',    q.contractStartDate);
-  set('contractMonths',       q.contractMonths);
-  set('contractEndDate',      q.contractEndDate);
-  set('paymentCount',         q.paymentCount);
-  set('firstPaymentDue',      q.firstPaymentDue);
-  set('recurringPaymentTerm', q.recurringPaymentTerm);
-  set('salesPerson',          q.salesPerson);
-  set('agencyName',           q.agencyName);
-  set('remarks',              q.remarks);
-  set('totalDiscount',        q.totalDiscount || 0);
-
-  ITEM_STATE = {};
-  if (Array.isArray(q.items)) {
-    q.items.forEach(it => {
-      if (it.isCustom) return;
-      ITEM_STATE[it.productId] = {
-        checked: true,
-        qty: it.quantity,
-        initialFee: it.initialFee,
-        monthlyFee: it.monthlyFee,
-        yearlyFee:  it.yearlyFee,
-        discount:   it.discount,
-      };
-    });
-  }
-
-  CUSTOM_ITEMS = [];
-  CUSTOM_SEQ = 0;
-  if (Array.isArray(q.customItems)) {
-    q.customItems.forEach(c => {
-      const m = String(c.id || '').match(/^C(\d+)$/);
-      if (m) CUSTOM_SEQ = Math.max(CUSTOM_SEQ, parseInt(m[1], 10));
-      CUSTOM_ITEMS.push({
-        id: c.id || ('C' + (++CUSTOM_SEQ)),
-        name: c.name || '',
-        content: c.content || '',
-        quantity: c.quantity != null ? c.quantity : 1,
-        initialFee: c.initialFee != null ? c.initialFee : null,
-        monthlyFee: c.monthlyFee != null ? c.monthlyFee : null,
-        yearlyFee:  c.yearlyFee  != null ? c.yearlyFee  : null,
-        discount:   c.discount || 0,
-      });
-    });
-  } else if (Array.isArray(q.items)) {
-    q.items.filter(it => it.isCustom).forEach(it => {
-      CUSTOM_SEQ++;
-      CUSTOM_ITEMS.push({
-        id: 'C' + CUSTOM_SEQ,
-        name: it.productName || '',
-        content: it.content || '',
-        quantity: it.quantity != null ? it.quantity : 1,
-        initialFee: it.initialFee != null ? it.initialFee : null,
-        monthlyFee: it.monthlyFee != null ? it.monthlyFee : null,
-        yearlyFee:  it.yearlyFee  != null ? it.yearlyFee  : null,
-        discount:   it.discount || 0,
-      });
-    });
-  }
-
-  if (MASTER_PRODUCTS.length) renderServiceList();
-  renderCustomList();
-  updateEndDate();
-  recalc();
-  showTab('form');
-}
-
 
 /* ===========================================================
    CLEAR
