@@ -1794,6 +1794,7 @@ function renderPreview() {
     <div class="pv-footer">
       ※ 価格は全て税別表記です。<br>
       ※ 本見積書は契約後、双方の合意の上、申込書として効力を持ちます。<br>
+      ※ 期間満了をもって本契約を終了する場合、甲は満了日の2カ月前までに書面によりお申し出いただくものとします。当該申し出がないときは、本契約は1年間の自動更新となります。<br>
       ※ 利用規約：<a href="${COMPANY_INFO.kiyakuUrl}" target="_blank">${COMPANY_INFO.kiyakuUrl}</a><br>
     </div>
   `;
@@ -2311,6 +2312,7 @@ function exportToExcel() {
   const notes = [
     '※ 価格は全て税別表記です。',
     '※ 本見積書は契約後、双方の合意の上、申込書として効力を持ちます。',
+    '※ 期間満了をもって本契約を終了する場合、甲は満了日の2カ月前までに書面によりお申し出いただくものとします。当該申し出がないときは、本契約は1年間の自動更新となります。',
     '※ 利用規約：' + COMPANY_INFO.kiyakuUrl,
   ];
   notes.forEach(note => {
